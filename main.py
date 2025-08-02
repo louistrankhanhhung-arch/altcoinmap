@@ -8,11 +8,9 @@ def main():
     print(f"⏰ [UTC {now.strftime('%Y-%m-%d %H:%M:%S')}] Running scheduled scan...")
 
     signals, all_symbols, raw_signals = build_signals()
+    print(f"📊 Raw signals: {signals}")
 
-print(f"📊 Raw signals: {signals}")  # giữ lại dòng này ✅
-
-save_signals(signals, all_symbols, raw_signals)
-
+    save_signals(signals, all_symbols, raw_signals)
 
     if signals:
         print(f"✅ {len(signals)} signal(s) found. Sending to Telegram...")
@@ -20,6 +18,7 @@ save_signals(signals, all_symbols, raw_signals)
     else:
         print("⚠️ No strong signals detected. Sending announcement...")
         send_signals([])
+
 
 if __name__ == "__main__":
     print("🚀 Starting main.py")
