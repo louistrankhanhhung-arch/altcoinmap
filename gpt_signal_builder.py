@@ -78,7 +78,7 @@ Yêu cầu:
     "risk_level": "...",
     "leverage": "...",
     "key_watch": "...",
-    "assessment": "...",
+    "assessment": "Viết nhận định ngắn gọn, đúng bản chất tín hiệu kỹ thuật, không phóng đại",
     "strength": "strong" hoặc "moderate"
   }}
 ]
