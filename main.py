@@ -21,3 +21,18 @@ if __name__ == "__main__":
     print("🚀 Starting main.py")
     main()
     print("✅ Finished running main.py")
+
+from signal_logger import save_signals  # thêm dòng này
+
+...
+
+def main():
+    print("⏰ Running scheduled scan...")
+
+    signals = build_signals()
+    print(f"🧾 Raw signals: {signals}")
+
+    save_signals(signals)  # 💾 lưu trước khi gửi Telegram
+
+    if signals:
+        ...
