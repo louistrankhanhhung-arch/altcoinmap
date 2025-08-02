@@ -1,79 +1,55 @@
-import os 
-import openai
-import json
-from datetime import datetime
-from kucoin_api import fetch_coin_data  # 🆕 Giả định bạn có file kucoin_api.py xử lý dữ liệu
+import requests
+import pandas as pd
+import numpy as np
 
-openai.api_key = os.getenv("GPT_API")
+def fetch_coin_data(symbol: str, interval="4hour", limit=100):
+    """
+    Fetch historical OHLCV data from Kucoin and calculate indicators.
+    """
+    base_url = "https://api.kucoin.com"
+    symbol_formatted = symbol.replace("/", "-")
+    url = f"{base_url}/api/v1/market/candles?type={interval}&symbol={symbol_formatted}&limit={limit}"
 
-def get_market_data():
-    symbols = ["BNB/USDT", "PENDLE/USDT"]  # Bạn có thể mở rộng thêm
-    coin_data = []
-
-    for symbol in symbols:
-        try:
-            data = fetch_coin_data(symbol, interval="4hour", limit=100)
-            coin_data.append({"symbol": symbol, "data": data})
-        except Exception as e:
-            print(f"❌ Lỗi khi fetch {symbol}: {e}")
-
-    context = "Phân tích kỹ thuật tổng thể dựa trên BTC/USDT hoặc market cap... (placeholder)"
-
-    return {
-        "context": context,
-        "coins": coin_data
-    }
-
-def build_signals():
     try:
-        market_data = get_market_data()
-        context = market_data["context"]
-        coin_data = market_data["coins"]
-        all_symbols = [coin["symbol"] for coin in coin_data]
-        raw_signals = coin_data
-
-        print("📘 Bối cảnh thị trường:")
-        print(context)
-        print("📈 Dữ liệu các coin:")
-        for coin in coin_data:
-            print(f"- {coin['symbol']}: {coin['data']}")
-
-        with open("debug_input.json", "w") as f:
-            json.dump({"context": context, "coins": coin_data}, f, indent=2)
-
-        prompt = f'''
-Bạn là một chuyên gia giao dịch crypto. Hãy phân tích và chọn ra các tín hiệu mạnh từ dữ liệu sau:
-
-Bối cảnh thị trường chung:
-{context}
-
-Dữ liệu các đồng coin:
-{coin_data}
-
-Yêu cầu:
-- Chỉ chọn tín hiệu đủ mạnh (breakout rõ ràng, volume vượt đỉnh, RSI quá mua/quá bán rõ).
-- Chỉ phát tối đa 1 tín hiệu cho mỗi đồng coin.
-- Trả về định dạng JSON gồm: pair, direction, entry_1, entry_2, stop_loss, tp [5 mục tiêu], risk_level, key_watch, assessment.
-- Nếu không có tín hiệu mạnh, trả về null.
-
-Trả lời bằng tiếng Việt.
-'''
-
-        response = openai.ChatCompletion.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}]
-        )
-
-        result = response.choices[0].message["content"]
-        print("📤 GPT Output:")
-        print(result)
-
-        if "null" in result.lower():
-            return [], all_symbols, raw_signals
-
-        parsed = json.loads(result)
-        return parsed, all_symbols, raw_signals
-
+        response = requests.get(url)
+        response.raise_for_status()
+        raw = response.json()["data"]
     except Exception as e:
-        print(f"❌ GPT error: {e}")
-        return [], [], []
+        raise RuntimeError(f"Lỗi khi gọi API Kucoin: {e}")
+
+    # Format data to DataFrame
+    df = pd.DataFrame(raw, columns=["timestamp", "open", "close", "high", "low", "volume", "turnover"])
+    df = df.iloc[::-1].reset_index(drop=True)
+    df[["open", "close", "high", "low", "volume"]] = df[["open", "close", "high", "low", "volume"]].astype(float)
+
+    # Tính chỉ báo
+    df["MA20"] = df["close"].rolling(window=20).mean()
+    df["MA50"] = df["close"].rolling(window=50).mean()
+    df["stddev"] = df["close"].rolling(window=20).std()
+    df["UpperBB"] = df["MA20"] + 2 * df["stddev"]
+    df["LowerBB"] = df["MA20"] - 2 * df["stddev"]
+
+    # RSI
+    delta = df["close"].diff()
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    avg_gain = gain.rolling(window=14).mean()
+    avg_loss = loss.rolling(window=14).mean()
+    rs = avg_gain / avg_loss
+    df["RSI"] = 100 - (100 / (1 + rs))
+
+    # Chỉ lấy 1 dòng mới nhất
+    last = df.iloc[-1]
+    return {
+        "close": last["close"],
+        "volume": last["volume"],
+        "MA20": round(last["MA20"], 4),
+        "MA50": round(last["MA50"], 4),
+        "UpperBB": round(last["UpperBB"], 4),
+        "LowerBB": round(last["LowerBB"], 4),
+        "RSI": round(last["RSI"], 2),
+        "price_above_ma20": last["close"] > last["MA20"],
+        "price_above_ma50": last["close"] > last["MA50"],
+        "bb_breakout": last["close"] > last["UpperBB"],
+        "bb_breakdown": last["close"] < last["LowerBB"],
+    }
