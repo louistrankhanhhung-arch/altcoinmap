@@ -7,10 +7,12 @@ def main():
     now = datetime.datetime.utcnow()
     print(f"⏰ [UTC {now.strftime('%Y-%m-%d %H:%M:%S')}] Running scheduled scan...")
 
-    signals = build_signals()
-    print(f"📊 Raw signals: {signals}")
+    signals, all_symbols, raw_signals = build_signals()
 
-    save_signals(signals)  # 💾 lưu log
+print(f"📊 Raw signals: {signals}")  # giữ lại dòng này ✅
+
+save_signals(signals, all_symbols, raw_signals)
+
 
     if signals:
         print(f"✅ {len(signals)} signal(s) found. Sending to Telegram...")
