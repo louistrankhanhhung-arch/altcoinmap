@@ -57,7 +57,9 @@ Dữ liệu các đồng coin:
 {coin_data}
 
 Yêu cầu:
-- Chỉ chọn tín hiệu đủ mạnh (ví dụ: breakout rõ ràng để vào lệnh Long hoặc breakdown mạnh để vào lệnh Short, volume vượt đỉnh, RSI quá mua/quá bán rõ).
+- Ưu tiên các tín hiệu có xác suất cao: breakout rõ ràng (cho Long), breakdown mạnh (cho Short), volume vượt đỉnh, RSI quá mua/quá bán rõ.
+- Ngoài ra, chấp nhận các tín hiệu pullback (về MA, vùng hỗ trợ/kháng cự) hoặc sideways range có biến động tăng dần nếu có tín hiệu hồi phục hoặc đảo chiều rõ ràng.
+- Với mỗi tín hiệu, đánh giá mức độ: "strong", "moderate", hoặc "weak" và chỉ giữ tín hiệu "strong" hoặc "moderate".
 - Tư vấn đòn bẩy (leverage) phù hợp với mức độ rủi ro của tín hiệu (ví dụ: x3 cho tín hiệu có rủi ro cao, x10 cho tín hiệu an toàn và rõ ràng).
 - Chỉ phát tối đa 1 tín hiệu cho mỗi đồng coin.
 - Nếu không có tín hiệu mạnh, loại bỏ coin đó khỏi kết quả.
@@ -73,7 +75,8 @@ Yêu cầu:
     "risk_level": "...",
     "leverage": "...",
     "key_watch": "...",
-    "assessment": "..."
+    "assessment": "...",
+    "strength": "strong" hoặc "moderate"
   }}
 ]
 
