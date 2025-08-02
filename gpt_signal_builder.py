@@ -5,7 +5,7 @@ from datetime import datetime
 from kucoin_api import fetch_coin_data  # 🆕 Giả định bạn có file kucoin_api.py xử lý dữ liệu
 from openai import OpenAI
 
-client = OpenAI()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def get_market_data():
     symbols = [
@@ -90,7 +90,7 @@ Chỉ trả kết quả JSON thuần túy, không cần thêm giải thích.
         match = re.search(r"(\[.*?\])", result, re.DOTALL)
         if match:
             result = match.group(1)
-        
+
         print("📤 GPT Output:")
         print(result)
 
