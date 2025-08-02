@@ -2,7 +2,7 @@ import os
 import requests
 
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHANNEL_ID = os.getenv("BOT_CHANNEL_ID")
+USER_ID = os.getenv("USER_ID")
 
 def send_signals(signals):
     if not signals:
@@ -16,7 +16,7 @@ def send_signals(signals):
 def send_message(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     data = {
-        "chat_id": CHANNEL_ID,
+        "chat_id": USER_ID,
         "text": text,
         "parse_mode": "HTML"
     }
