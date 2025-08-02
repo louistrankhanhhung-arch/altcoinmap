@@ -1,10 +1,11 @@
 import os 
 import json
+import re
 from datetime import datetime
 from kucoin_api import fetch_coin_data  # 🆕 Giả định bạn có file kucoin_api.py xử lý dữ liệu
 from openai import OpenAI
 
-client = OpenAI(api_key=os.getenv("GPT_API"))
+client = OpenAI()
 
 def get_market_data():
     symbols = [
@@ -85,7 +86,11 @@ Chỉ trả kết quả JSON thuần túy, không cần thêm giải thích.
         )
 
         result = response.choices[0].message.content.strip()
-        result = result[result.find("[") : result.rfind("]") + 1]  # ✂️ Cắt JSON sạch nếu có văn bản dư thừa
+
+        match = re.search(r"(\[.*?\])", result, re.DOTALL)
+        if match:
+            result = match.group(1)
+        
         print("📤 GPT Output:")
         print(result)
 
