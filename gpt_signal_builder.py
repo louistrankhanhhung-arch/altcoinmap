@@ -4,8 +4,6 @@ from datetime import datetime
 from kucoin_api import fetch_coin_data  # 🆕 Giả định bạn có file kucoin_api.py xử lý dữ liệu
 from openai import OpenAI
 
-from openai import OpenAI
-
 client = OpenAI(api_key=os.getenv("GPT_API"))
 
 def get_market_data():
@@ -61,10 +59,24 @@ Yêu cầu:
 - Chỉ chọn tín hiệu đủ mạnh (ví dụ: breakout rõ ràng để vào lệnh Long hoặc breakdown mạnh để vào lệnh Short, volume vượt đỉnh, RSI quá mua/quá bán rõ).
 - Tư vấn đòn bẩy (leverage) phù hợp với mức độ rủi ro của tín hiệu (ví dụ: x3 cho tín hiệu có rủi ro cao, x10 cho tín hiệu an toàn và rõ ràng).
 - Chỉ phát tối đa 1 tín hiệu cho mỗi đồng coin.
-- Trả về định dạng JSON gồm: pair, direction, entry_1, entry_2, stop_loss, tp [5 mục tiêu], risk_level, leverage, key_watch, assessment.
-- Nếu không có tín hiệu mạnh, trả về null.
+- Nếu không có tín hiệu mạnh, loại bỏ coin đó khỏi kết quả.
+- Trả về **chỉ JSON thuần túy** theo định dạng:
+[
+  {{
+    "pair": "...",
+    "direction": "Long" hoặc "Short",
+    "entry_1": ..., 
+    "entry_2": ..., 
+    "stop_loss": ..., 
+    "tp": [tp1, tp2, tp3, tp4, tp5],
+    "risk_level": "...",
+    "leverage": "...",
+    "key_watch": "...",
+    "assessment": "..."
+  }}
+]
 
-Trả lời bằng tiếng Việt.
+Chỉ trả kết quả JSON thuần túy, không cần thêm giải thích.
 '''
 
         response = client.chat.completions.create(
