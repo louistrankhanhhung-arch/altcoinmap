@@ -111,7 +111,16 @@ Chỉ trả kết quả JSON thuần túy, không cần thêm giải thích.
             print(result)
             return [], all_symbols, raw_signals
 
-        return parsed, all_symbols, raw_signals
+        required_keys = {"pair", "direction", "entry_1", "entry_2", "stop_loss", "tp", "risk_level", "leverage", "key_watch", "assessment", "strength"}
+        valid_signals = []
+
+        for s in parsed:
+            if all(k in s for k in required_keys):
+                valid_signals.append(s)
+            else:
+                print(f"⚠️ Thiếu trường trong tín hiệu: {s}")
+
+        return valid_signals, all_symbols, raw_signals
 
     except Exception as e:
         print(f"❌ GPT error: {e}")
