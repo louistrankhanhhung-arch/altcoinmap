@@ -1,10 +1,10 @@
 import os 
-import openai
 import json
 from datetime import datetime
 from kucoin_api import fetch_coin_data  # 🆕 Giả định bạn có file kucoin_api.py xử lý dữ liệu
+from openai import OpenAI
 
-openai.api_key = os.getenv("GPT_API")
+client = OpenAI()
 
 def get_market_data():
     symbols = [
@@ -65,12 +65,12 @@ Yêu cầu:
 Trả lời bằng tiếng Việt.
 '''
 
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}]
         )
 
-        result = response.choices[0].message["content"]
+        result = response.choices[0].message.content
         print("📤 GPT Output:")
         print(result)
 
