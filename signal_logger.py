@@ -1,29 +1,24 @@
-# signal_logger.py
 import json
-import os
 from datetime import datetime
 
-LOG_FILE = "data/signals_log.json"
+LOG_FILE = "signal_logger.json"
 
-def save_signals(signals):
-    if not signals:
-        return
-
+def save_signals(signals, all_symbols=None, raw_signals=None):
+    # Ghi lại mọi phiên quét dù signals rỗng
     log_entry = {
         "timestamp": datetime.utcnow().isoformat(),
-        "signals": signals
+        "signals": signals,
+        "all_symbols": all_symbols or [],
+        "raw_signals": raw_signals or []
     }
 
     try:
-        if not os.path.exists(LOG_FILE):
-            os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
-            with open(LOG_FILE, "w") as f:
-                json.dump([log_entry], f, indent=2)
-        else:
-            with open(LOG_FILE, "r+") as f:
-                data = json.load(f)
-                data.insert(0, log_entry)  # thêm vào đầu
-                f.seek(0)
-                json.dump(data[:20], f, indent=2)  # giữ lại 20 lần gần nhất
-    except Exception as e:
-        print("❌ Lỗi khi lưu log:", e)
+        with open(LOG_FILE, "r") as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = []
+
+    data.insert(0, log_entry)  # thêm log mới vào đầu
+
+    with open(LOG_FILE, "w") as f:
+        json.dump(data[:20], f, indent=2)  # giữ lại 20 bản quét gần nhất
