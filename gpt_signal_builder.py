@@ -2,7 +2,7 @@ import os
 import json
 import re
 from datetime import datetime
-from kucoin_api import fetch_coin_data  # 🆕 Giả định bạn có file kucoin_api.py xử lý dữ liệu
+from kucoin_api import fetch_coin_data, fetch_realtime_price
 from openai import OpenAI
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -17,7 +17,8 @@ def get_market_data():
     for symbol in symbols:
         try:
             data = fetch_coin_data(symbol)
-            coin_data.append({"symbol": symbol, "data": data})
+            realtime = fetch_realtime_price(symbol)
+            coin_data.append({"symbol": symbol, "data": data, "realtime": realtime})
         except Exception as e:
             print(f"❌ Lỗi khi fetch {symbol}: {e}")
 
@@ -40,7 +41,7 @@ def build_signals():
         print(context)
         print("📈 Dữ liệu các coin:")
         for coin in coin_data:
-            print(f"- {coin['symbol']}: {coin['data']}")
+            print(f"- {coin['symbol']}: {coin['data'][-1]} | Realtime: {coin['realtime']}")
 
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M")
         debug_filename = f"debug_input_{timestamp}.json"
@@ -62,7 +63,7 @@ Yêu cầu:
 - Với mỗi tín hiệu, đánh giá mức độ: "strong", "moderate", hoặc "weak" và chỉ giữ tín hiệu "strong" hoặc "moderate".
 - Nếu có tín hiệu Long và Short đồng thời trên cùng một đồng coin, chỉ giữ tín hiệu có xác suất cao hơn.
 - Tư vấn đòn bẩy (leverage) phù hợp với mức độ rủi ro của tín hiệu (ví dụ: x3 cho tín hiệu có rủi ro cao, x10 cho tín hiệu an toàn và rõ ràng).
-- Entry 1 và Entry 2 nên nằm quanh giá đóng cửa gần nhất (giá close của nến 4H mới nhất).
+- Entry 1 và Entry 2 nên nằm quanh giá real-time (giá realtime đã được cung cấp cho từng coin).
 - Chỉ phát tối đa 1 tín hiệu cho mỗi đồng coin.
 - Nếu không có tín hiệu mạnh, loại bỏ coin đó khỏi kết quả.
 - Trả về **chỉ JSON thuần túy** theo định dạng:
