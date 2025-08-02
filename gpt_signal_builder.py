@@ -14,10 +14,19 @@ def get_market_data():
         ]
     }
 
+import json  # ⬅️ THÊM DÒNG NÀY
+
 def build_signals():
     market_data = get_market_data()
     context = market_data["context"]
     coin_data = market_data["coins"]
+
+    # In ra log dữ liệu đầu vào
+    print("🪵 Market context:")
+    print(context)
+
+    print("📊 Coin data:")
+    print(json.dumps(coin_data, indent=2))  # 👈 In JSON đẹp
 
     prompt = f'''
 Bạn là một chuyên gia giao dịch crypto. Hãy phân tích và chọn ra các tín hiệu mạnh từ dữ liệu sau:
