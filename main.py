@@ -3,6 +3,7 @@ from telegram_bot import send_signals
 from signal_logger import save_signals
 import datetime
 import traceback
+import json
 
 def main():
     now = datetime.datetime.utcnow()
