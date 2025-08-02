@@ -20,17 +20,43 @@ def send_message(text):
         "text": text,
         "parse_mode": "HTML"
     }
-    requests.post(url, json=data)
+    response = requests.post(url, json=data)
+    
+    if response.status_code != 200:
+        print(f"❌ Failed to send message: {response.status_code} - {response.text}")
+    else:
+        print("✅ Message sent to Telegram.")
+
+decimal_map = {
+    "BTC": 2,
+    "ETH": 2,
+    "BNB": 2,
+    "AVAX": 2,
+    "LINK": 2,
+    "INJ": 2,
+    "NEAR": 3,
+    "PENDLE": 3,
+    "ARB": 4,
+    "SUI": 4,
+}
+def format_price(val, symbol="BTC"):
+    decimals = decimal_map.get(symbol.split("/")[0], 2)
+    return f"{val:,.{decimals}f}"
+
 
 def format_message(s):
     try:
-        return f"""<b>{s['pair']} | {s['direction'].upper()}</b>
-🎯 <b>Entry:</b> {s['entry_1']} / {s['entry_2']}
-📉 <b>SL:</b> {s['stop_loss']}
-💰 <b>TPs:</b> {', '.join(map(str, s['tp']))}
+        pair = s['pair']  # e.g. "BTC/USDT"
+        base_symbol = pair.split("/")[0]  # "BTC"
+        return f"""<b>{pair} | {s['direction'].upper()}</b>
+🎯 <b>Entry:</b> {format_price(s['entry_1'], base_symbol)} / {format_price(s['entry_2'], base_symbol)}
+📉 <b>SL:</b> {format_price(s['stop_loss'], base_symbol)}
+💰 <b>TPs:</b> {', '.join(format_price(p, base_symbol) for p in s['tp'])}
 🧭 <b>Strategy:</b> {s['strategy']}
 🧠 <b>Assessment:</b> {s['assessment']}
 ⚖️ <b>Risk:</b> {s['risk_level']} | <b>Leverage:</b> {s.get('leverage', 'x5')}
 🔍 <b>Key Watch:</b> {s['key_watch']}"""
     except Exception as e:
         return "⚠️ Định dạng tín hiệu lỗi: " + str(e)
+
+
