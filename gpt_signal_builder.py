@@ -93,6 +93,9 @@ Chỉ trả kết quả JSON thuần túy, không cần thêm giải thích.
         match = re.search(r"(\[.*?\])", result, re.DOTALL)
         if match:
             result = match.group(1)
+        else:
+            print("⚠️ Không tìm thấy JSON hợp lệ trong GPT output.")
+            return [], all_symbols, raw_signals
 
         print("📤 GPT Output:")
         print(result)
