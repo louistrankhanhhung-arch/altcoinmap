@@ -62,6 +62,7 @@ Yêu cầu:
 - Với mỗi tín hiệu, đánh giá mức độ: "strong", "moderate", hoặc "weak" và chỉ giữ tín hiệu "strong" hoặc "moderate".
 - Nếu có tín hiệu Long và Short đồng thời trên cùng một đồng coin, chỉ giữ tín hiệu có xác suất cao hơn.
 - Tư vấn đòn bẩy (leverage) phù hợp với mức độ rủi ro của tín hiệu (ví dụ: x3 cho tín hiệu có rủi ro cao, x10 cho tín hiệu an toàn và rõ ràng).
+- Entry 1 và Entry 2 nên nằm quanh giá đóng cửa gần nhất (giá close của nến 4H mới nhất).
 - Chỉ phát tối đa 1 tín hiệu cho mỗi đồng coin.
 - Nếu không có tín hiệu mạnh, loại bỏ coin đó khỏi kết quả.
 - Trả về **chỉ JSON thuần túy** theo định dạng:
@@ -81,7 +82,7 @@ Yêu cầu:
   }}
 ]
 
-Chỉ trả kết quả JSON thuần túy, không cần thêm giải thích.
+Trả lời bằng tiếng Việt, dùng từ ngữ tài chính – kỹ thuật phù hợp với trader Việt. Không thêm giải thích ngoài JSON.
 '''
 
         response = client.chat.completions.create(
