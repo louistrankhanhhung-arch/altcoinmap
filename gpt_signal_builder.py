@@ -97,7 +97,14 @@ Chỉ trả kết quả JSON thuần túy, không cần thêm giải thích.
         if "null" in result.lower():
             return [], all_symbols, raw_signals
 
-        parsed = json.loads(result)
+        try:
+            parsed = json.loads(result)
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON decode error: {e}")
+            print("🔍 Raw GPT result:")
+            print(result)
+            return [], all_symbols, raw_signals
+
         return parsed, all_symbols, raw_signals
 
     except Exception as e:
