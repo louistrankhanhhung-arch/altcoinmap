@@ -90,12 +90,13 @@ Chỉ trả kết quả JSON thuần túy, không cần thêm giải thích.
 
         result = response.choices[0].message.content.strip()
 
-        match = re.search(r"(\[.*?\])", result, re.DOTALL)
-        if match:
-            result = match.group(1)
-        else:
+        json_start = result.find("[")
+        json_end = result.rfind("]")
+        if json_start == -1 or json_end == -1:
             print("⚠️ Không tìm thấy JSON hợp lệ trong GPT output.")
             return [], all_symbols, raw_signals
+
+        result = result[json_start:json_end + 1]
 
         print("📤 GPT Output:")
         print(result)
