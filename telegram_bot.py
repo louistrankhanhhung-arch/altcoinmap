@@ -21,7 +21,7 @@ def send_message(text):
         "parse_mode": "HTML"
     }
     response = requests.post(url, json=data)
-    
+
     if response.status_code != 200:
         print(f"❌ Failed to send message: {response.status_code} - {response.text}")
     else:
@@ -39,24 +39,21 @@ decimal_map = {
     "ARB": 4,
     "SUI": 4,
 }
+
 def format_price(val, symbol="BTC"):
     decimals = decimal_map.get(symbol.split("/")[0], 2)
     return f"{val:,.{decimals}f}"
 
-
 def format_message(s):
     try:
-        pair = s['pair']  # e.g. "BTC/USDT"
-        base_symbol = pair.split("/")[0]  # "BTC"
-        return f"""<b>{pair} | {s['direction'].upper()}</b>
+        pair = s['pair']
+        base_symbol = pair.split("/")[0]
+        return f"""<b>{pair} | {s.get('direction', '?').upper()}</b>
 🎯 <b>Entry:</b> {format_price(s['entry_1'], base_symbol)} / {format_price(s['entry_2'], base_symbol)}
 📉 <b>SL:</b> {format_price(s['stop_loss'], base_symbol)}
 💰 <b>TPs:</b> {', '.join(format_price(p, base_symbol) for p in s['tp'])}
-🧭 <b>Strategy:</b> {s['strategy']}
-🧠 <b>Assessment:</b> {s['assessment']}
-⚖️ <b>Risk:</b> {s['risk_level']} | <b>Leverage:</b> {s.get('leverage', 'x5')}
-🔍 <b>Key Watch:</b> {s['key_watch']}"""
+🧠 <b>Assessment:</b> {s.get('assessment', 'Không có đánh giá')}
+⚖️ <b>Risk:</b> {s.get('risk_level', '?')} | <b>Leverage:</b> {s.get('leverage', 'x5')}
+🔍 <b>Key Watch:</b> {s.get('key_watch', '...')}"""
     except Exception as e:
         return "⚠️ Định dạng tín hiệu lỗi: " + str(e)
-
-
