@@ -16,7 +16,7 @@ def get_market_data():
 
     for symbol in symbols:
         try:
-            data = fetch_coin_data(symbol)
+            data = fetch_coin_data(symbol, interval="4hour", limit=100)
             realtime = fetch_realtime_price(symbol)
             coin_data.append({"symbol": symbol, "data": data, "realtime": realtime})
         except Exception as e:
@@ -41,7 +41,7 @@ def build_signals():
         print(context)
         print("📈 Dữ liệu các coin:")
         for coin in coin_data:
-            print(f"- {coin['symbol']}: {coin['data'][-1]} | Realtime: {coin['realtime']}")
+            print(f"- {coin['symbol']}: {coin['data'][-1]} | Số nến: {len(coin['data'])} | Realtime: {coin['realtime']}")
 
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M")
         debug_filename = f"debug_input_{timestamp}.json"
@@ -60,6 +60,9 @@ Dữ liệu các đồng coin:
 Yêu cầu:
 - Ưu tiên các tín hiệu có xác suất cao: breakout rõ ràng (cho Long), breakdown mạnh (cho Short), volume vượt đỉnh, RSI quá mua/quá bán rõ.
 - Ngoài ra, chấp nhận các tín hiệu pullback (về MA, vùng hỗ trợ/kháng cự) hoặc sideways range có biến động tăng dần nếu có tín hiệu hồi phục hoặc đảo chiều rõ ràng.
+- Bỏ qua tín hiệu Long nếu RSI thấp nhưng nến xác nhận là nến đỏ. Bỏ qua tín hiệu Short nếu RSI cao nhưng nến xác nhận là nến xanh.
+- Không chọn tín hiệu Long nếu Entry nằm phía trên vùng kháng cự hoặc MA chính (MA20 hoặc MA50). Không chọn Short nếu Entry nằm dưới hỗ trợ.
+- Loại bỏ tín hiệu nếu không có xác nhận từ volume (ví dụ: breakout nhưng volume yếu).
 - Với mỗi tín hiệu, đánh giá mức độ: "strong", "moderate", hoặc "weak" và chỉ giữ tín hiệu "strong" hoặc "moderate".
 - Nếu có tín hiệu Long và Short đồng thời trên cùng một đồng coin, chỉ giữ tín hiệu có xác suất cao hơn.
 - Tư vấn đòn bẩy (leverage) phù hợp với mức độ rủi ro của tín hiệu (ví dụ: x3 cho tín hiệu có rủi ro cao, x10 cho tín hiệu an toàn và rõ ràng).
