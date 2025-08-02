@@ -84,7 +84,8 @@ Chỉ trả kết quả JSON thuần túy, không cần thêm giải thích.
             messages=[{"role": "user", "content": prompt}]
         )
 
-        result = response.choices[0].message.content
+        result = response.choices[0].message.content.strip()
+        result = result[result.find("[") : result.rfind("]") + 1]  # ✂️ Cắt JSON sạch nếu có văn bản dư thừa
         print("📤 GPT Output:")
         print(result)
 
