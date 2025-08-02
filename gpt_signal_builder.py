@@ -4,7 +4,9 @@ from datetime import datetime
 from kucoin_api import fetch_coin_data  # 🆕 Giả định bạn có file kucoin_api.py xử lý dữ liệu
 from openai import OpenAI
 
-client = OpenAI()
+from openai import OpenAI
+
+client = OpenAI(api_key=os.getenv("GPT_API"))
 
 def get_market_data():
     symbols = [
