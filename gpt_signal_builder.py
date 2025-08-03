@@ -68,7 +68,6 @@ Chỉ trả về dữ liệu JSON.
                     tp_range_ok = abs(float(tp[-1]) - entry_1) / entry_1 >= 0.01
                     sl_range_ok = abs(entry_1 - sl) / entry_1 >= 0.005
 
-                    # Chiến lược và confidence dựa trên entry (đã sửa đúng logic)
                     if direction == "long":
                         if entry_1 > entry_2:
                             p["strategy_type"] = "DCA"
@@ -86,7 +85,6 @@ Chỉ trả về dữ liệu JSON.
                     else:
                         p["strategy_type"] = "unknown"
 
-                    # Đánh giá confidence nâng cao
                     trend_1h = tf_data.get("1H", {}).get("trend", "unknown")
                     trend_4h = tf_data.get("4H", {}).get("trend", "unknown")
                     trend_1d = tf_data.get("1D", {}).get("trend", "unknown")
@@ -98,7 +96,6 @@ Chỉ trả về dữ liệu JSON.
 
                     signal_strength = 0
 
-                    # Scale-in: xu hướng đồng pha + tín hiệu nến thuận hướng + RSI hỗ trợ
                     if p["strategy_type"] == "scale-in":
                         if trend_1h == trend_4h == trend_1d and trend_1h in ["uptrend", "downtrend"]:
                             signal_strength += 1
@@ -111,7 +108,6 @@ Chỉ trả về dữ liệu JSON.
                         if direction == "short" and rsi_1h and rsi_1h < 45:
                             signal_strength += 1
 
-                    # DCA: phân kỳ trend + nến đảo chiều + RSI quá bán/mua
                     elif p["strategy_type"] == "DCA":
                         if trend_1d != trend_4h or trend_1d != trend_1h:
                             signal_strength += 1
@@ -124,7 +120,6 @@ Chỉ trả về dữ liệu JSON.
                         if direction == "short" and rsi_4h and rsi_4h > 60:
                             signal_strength += 1
 
-                    # Đánh giá tổng thể
                     if signal_strength >= 3:
                         p["confidence"] = "high"
                     elif signal_strength == 2:
