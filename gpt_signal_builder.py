@@ -1,6 +1,6 @@
 import openai
-from utils import format_prompt_for_gpt, parse_signal_response
 from datetime import datetime, UTC
+from utils import format_prompt_for_gpt, parse_signal_response
 
 # Gửi từng coin một với prompt tối giản
 async def get_gpt_signals(data_by_symbol):
@@ -50,3 +50,9 @@ async def get_gpt_signals(data_by_symbol):
             print(f"❌ GPT failed for {symbol}: {e}")
 
     return results
+
+BLOCKS = {
+    "block1": ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT"],
+    "block2": ["LINK/USDT", "NEAR/USDT", "AVAX/USDT", "ARB/USDT"],
+    "block3": ["SUI/USDT", "PENDLE/USDT"]
+}
