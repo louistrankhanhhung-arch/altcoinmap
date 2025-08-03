@@ -1,15 +1,14 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 LOG_FILE = "signal_logger.json"
 
 def save_signals(signals, all_symbols=None, raw_signals=None):
-    # Ghi lại mọi phiên quét dù signals rỗng
     log_entry = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "signals": signals,
         "all_symbols": all_symbols or [],
-        "raw_signals": raw_signals or []
+        "raw_signals": raw_signals or {}
     }
 
     try:
@@ -18,7 +17,11 @@ def save_signals(signals, all_symbols=None, raw_signals=None):
     except (FileNotFoundError, json.JSONDecodeError):
         data = []
 
-    data.insert(0, log_entry)  # thêm log mới vào đầu
+    data.insert(0, log_entry)  # log mới lên đầu
 
-    with open(LOG_FILE, "w") as f:
-        json.dump(data[:20], f, indent=2)  # giữ lại 20 bản quét gần nhất
+    try:
+        with open(LOG_FILE, "w") as f:
+            json.dump(data[:20], f, indent=2)
+        print("✅ Signals logged.")
+    except Exception as e:
+        print(f"❌ Failed to write signal log: {e}")
