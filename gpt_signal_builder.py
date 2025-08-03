@@ -68,7 +68,7 @@ Chỉ trả về dữ liệu JSON.
                     tp_range_ok = abs(float(tp[-1]) - entry_1) / entry_1 >= 0.01
                     sl_range_ok = abs(entry_1 - sl) / entry_1 >= 0.005
 
-                    # Chiến lược và confidence dựa trên entry
+                    # Chiến lược và confidence dựa trên entry (đã sửa đúng logic)
                     if direction == "long":
                         if entry_1 > entry_2:
                             p["strategy_type"] = "DCA"
@@ -77,10 +77,10 @@ Chỉ trả về dữ liệu JSON.
                         else:
                             p["strategy_type"] = "⚠️ check entry logic"
                     elif direction == "short":
-                        if entry_1 < entry_2:
-                            p["strategy_type"] = "DCA"
-                        elif entry_1 > entry_2:
+                        if entry_1 > entry_2:
                             p["strategy_type"] = "scale-in"
+                        elif entry_1 < entry_2:
+                            p["strategy_type"] = "DCA"
                         else:
                             p["strategy_type"] = "⚠️ check entry logic"
                     else:
@@ -102,9 +102,9 @@ Chỉ trả về dữ liệu JSON.
                     if p["strategy_type"] == "scale-in":
                         if trend_1h == trend_4h == trend_1d and trend_1h in ["uptrend", "downtrend"]:
                             signal_strength += 1
-                        if candle_1h in ["bullish engulfing"] and direction == "long":
+                        if candle_1h == "bullish engulfing" and direction == "long":
                             signal_strength += 1
-                        if candle_1h in ["bearish engulfing"] and direction == "short":
+                        if candle_1h == "bearish engulfing" and direction == "short":
                             signal_strength += 1
                         if direction == "long" and rsi_1h and rsi_1h > 55:
                             signal_strength += 1
