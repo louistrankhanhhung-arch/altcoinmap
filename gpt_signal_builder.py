@@ -65,22 +65,75 @@ Chỉ trả về dữ liệu JSON.
                     sl = float(p["stop_loss"])
                     direction = p["direction"].lower()
 
-                    # Check TP spread (TP5 >= Entry +- 1%)
                     tp_range_ok = abs(float(tp[-1]) - entry_1) / entry_1 >= 0.01
-
-                    # SL cách entry ít nhất 0.5%
                     sl_range_ok = abs(entry_1 - sl) / entry_1 >= 0.005
 
-                    # Entry1 < Entry2 (for long) or Entry1 > Entry2 (for short)
-                    entry_order_ok = (entry_1 < entry_2) if direction == "long" else (entry_1 > entry_2)
-
-                    # Gắn nhãn chiến lược
-                    if entry_order_ok:
-                        p["strategy"] = "scale-in"
+                    # Chiến lược và confidence dựa trên entry
+                    if direction == "long":
+                        if entry_1 > entry_2:
+                            p["strategy_type"] = "DCA"
+                        elif entry_1 < entry_2:
+                            p["strategy_type"] = "scale-in"
+                        else:
+                            p["strategy_type"] = "⚠️ check entry logic"
+                    elif direction == "short":
+                        if entry_1 < entry_2:
+                            p["strategy_type"] = "DCA"
+                        elif entry_1 > entry_2:
+                            p["strategy_type"] = "scale-in"
+                        else:
+                            p["strategy_type"] = "⚠️ check entry logic"
                     else:
-                        p["strategy"] = "invalid"
+                        p["strategy_type"] = "unknown"
 
-                    return tp_range_ok and sl_range_ok and entry_order_ok
+                    # Đánh giá confidence nâng cao
+                    trend_1h = tf_data.get("1H", {}).get("trend", "unknown")
+                    trend_4h = tf_data.get("4H", {}).get("trend", "unknown")
+                    trend_1d = tf_data.get("1D", {}).get("trend", "unknown")
+
+                    rsi_1h = tf_data.get("1H", {}).get("rsi")
+                    rsi_4h = tf_data.get("4H", {}).get("rsi")
+                    candle_1h = tf_data.get("1H", {}).get("candle_signal", "none")
+                    candle_4h = tf_data.get("4H", {}).get("candle_signal", "none")
+
+                    signal_strength = 0
+
+                    # Scale-in: xu hướng đồng pha + tín hiệu nến thuận hướng + RSI hỗ trợ
+                    if p["strategy_type"] == "scale-in":
+                        if trend_1h == trend_4h == trend_1d and trend_1h in ["uptrend", "downtrend"]:
+                            signal_strength += 1
+                        if candle_1h in ["bullish engulfing"] and direction == "long":
+                            signal_strength += 1
+                        if candle_1h in ["bearish engulfing"] and direction == "short":
+                            signal_strength += 1
+                        if direction == "long" and rsi_1h and rsi_1h > 55:
+                            signal_strength += 1
+                        if direction == "short" and rsi_1h and rsi_1h < 45:
+                            signal_strength += 1
+
+                    # DCA: phân kỳ trend + nến đảo chiều + RSI quá bán/mua
+                    elif p["strategy_type"] == "DCA":
+                        if trend_1d != trend_4h or trend_1d != trend_1h:
+                            signal_strength += 1
+                        if candle_4h == "bullish engulfing" and direction == "long":
+                            signal_strength += 1
+                        if candle_4h == "bearish engulfing" and direction == "short":
+                            signal_strength += 1
+                        if direction == "long" and rsi_4h and rsi_4h < 40:
+                            signal_strength += 1
+                        if direction == "short" and rsi_4h and rsi_4h > 60:
+                            signal_strength += 1
+
+                    # Đánh giá tổng thể
+                    if signal_strength >= 3:
+                        p["confidence"] = "high"
+                    elif signal_strength == 2:
+                        p["confidence"] = "medium"
+                    else:
+                        p["confidence"] = "low"
+
+                    entry_order_ok = p["strategy_type"] in ["scale-in", "DCA"]
+                    return tp_range_ok and sl_range_ok and entry_order_ok and p["confidence"] in ["high", "medium"]
                 except:
                     return False
 
