@@ -1,15 +1,18 @@
-import sys
+import sys 
 import datetime
 import traceback
 import json
-from gpt_signal_builder import build_signals, BLOCKS
+from gpt_signal_builder import get_gpt_signals, BLOCKS
 from telegram_bot import send_signals
 from signal_logger import save_signals
+from kucoin_api import get_market_data
+from indicators import compute_indicators
 
 ACTIVE_FILE = "active_signals.json"
 
+
 def save_active_signals(signals):
-    now = datetime.datetime.utcnow().isoformat()
+    now = datetime.datetime.now(datetime.UTC).isoformat()
     for s in signals:
         s["sent_at"] = now
         s["status"] = "open"
@@ -24,8 +27,9 @@ def save_active_signals(signals):
     with open(ACTIVE_FILE, "w") as f:
         json.dump(new_data[:50], f, indent=2)  # giữ lại 50 tín hiệu gần nhất
 
+
 def main():
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.UTC)
     print(f"\n⏰ [UTC {now.strftime('%Y-%m-%d %H:%M:%S')}] Running scheduled scan...")
 
     if len(sys.argv) < 2:
@@ -40,7 +44,20 @@ def main():
         return
 
     try:
-        signals, all_symbols, raw_signals = build_signals(symbols)
+        # 1. Fetch raw market data
+        raw_data = get_market_data(symbols)
+
+        # 2. Tính indicators
+        data_with_indicators = {
+            symbol: compute_indicators(ohlcv) for symbol, ohlcv in raw_data.items()
+        }
+
+        # 3. Gửi qua GPT để đánh giá
+        import asyncio
+        signals = asyncio.run(get_gpt_signals(data_with_indicators))
+
+        all_symbols = list(data_with_indicators.keys())
+        raw_signals = data_with_indicators
         save_signals(signals, all_symbols, raw_signals)
 
         if signals:
@@ -55,6 +72,7 @@ def main():
         print(f"\n❌ Main error: {e}")
         traceback.print_exc()
         send_signals(["⚠️ Lỗi khi chạy hệ thống: " + str(e)])
+
 
 if __name__ == "__main__":
     main()
