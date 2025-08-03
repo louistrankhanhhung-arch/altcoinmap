@@ -1,18 +1,18 @@
-import sys 
-import datetime
-import traceback
+import sys
 import json
+import traceback
+import asyncio
+from datetime import datetime, UTC
 from gpt_signal_builder import get_gpt_signals, BLOCKS
+from kucoin_api import fetch_coin_data
 from telegram_bot import send_signals
 from signal_logger import save_signals
-from kucoin_api import get_market_data
 from indicators import compute_indicators
 
 ACTIVE_FILE = "active_signals.json"
 
-
 def save_active_signals(signals):
-    now = datetime.datetime.now(datetime.UTC).isoformat()
+    now = datetime.now(UTC).isoformat()
     for s in signals:
         s["sent_at"] = now
         s["status"] = "open"
@@ -25,11 +25,10 @@ def save_active_signals(signals):
 
     new_data = signals + existing
     with open(ACTIVE_FILE, "w") as f:
-        json.dump(new_data[:50], f, indent=2)  # giữ lại 50 tín hiệu gần nhất
-
+        json.dump(new_data[:50], f, indent=2)
 
 def main():
-    now = datetime.datetime.now(datetime.UTC)
+    now = datetime.now(UTC)
     print(f"\n⏰ [UTC {now.strftime('%Y-%m-%d %H:%M:%S')}] Running scheduled scan...")
 
     if len(sys.argv) < 2:
@@ -44,21 +43,22 @@ def main():
         return
 
     try:
-        # 1. Fetch raw market data
-        raw_data = get_market_data(symbols)
+        print("📥 Fetching market data...")
+        data_by_symbol = {}
+        for symbol in symbols:
+            raw_data = {
+                tf: fetch_coin_data(symbol, interval=tf.lower()) for tf in ["1H", "4H", "1D"]
+            }
+            enriched = {
+                tf: compute_indicators(raw_data[tf]) for tf in raw_data
+            }
+            data_by_symbol[symbol] = enriched
 
-        # 2. Tính indicators
-        data_with_indicators = {
-            symbol: compute_indicators(ohlcv) for symbol, ohlcv in raw_data.items()
-        }
-
-        # 3. Gửi qua GPT để đánh giá
-        import asyncio
-        signals = asyncio.run(get_gpt_signals(data_with_indicators))
-
-        all_symbols = list(data_with_indicators.keys())
-        raw_signals = data_with_indicators
-        save_signals(signals, all_symbols, raw_signals)
+        print("📊 Sending to GPT...")
+        signals_dict = asyncio.run(get_gpt_signals(data_by_symbol))
+        signals = list(signals_dict.values())
+        all_symbols = list(data_by_symbol.keys())
+        save_signals(signals, all_symbols, data_by_symbol)
 
         if signals:
             print(f"\n✅ {len(signals)} signal(s) found. Sending to Telegram...")
@@ -72,7 +72,6 @@ def main():
         print(f"\n❌ Main error: {e}")
         traceback.print_exc()
         send_signals(["⚠️ Lỗi khi chạy hệ thống: " + str(e)])
-
 
 if __name__ == "__main__":
     main()
