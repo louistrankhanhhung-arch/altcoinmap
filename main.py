@@ -1,9 +1,28 @@
 import sys
 import datetime
 import traceback
+import json
 from gpt_signal_builder import build_signals, BLOCKS
 from telegram_bot import send_signals
 from signal_logger import save_signals
+
+ACTIVE_FILE = "active_signals.json"
+
+def save_active_signals(signals):
+    now = datetime.datetime.utcnow().isoformat()
+    for s in signals:
+        s["sent_at"] = now
+        s["status"] = "open"
+
+    try:
+        with open(ACTIVE_FILE, "r") as f:
+            existing = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        existing = []
+
+    new_data = signals + existing
+    with open(ACTIVE_FILE, "w") as f:
+        json.dump(new_data[:50], f, indent=2)  # giữ lại 50 tín hiệu gần nhất
 
 def main():
     now = datetime.datetime.utcnow()
@@ -27,6 +46,7 @@ def main():
         if signals:
             print(f"\n✅ {len(signals)} signal(s) found. Sending to Telegram...")
             send_signals(signals)
+            save_active_signals(signals)
         else:
             print("\n⚠️ No strong signals detected. Sending announcement...")
             send_signals([])
