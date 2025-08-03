@@ -57,10 +57,37 @@ Chỉ trả về dữ liệu JSON.
             reply = response.choices[0].message.content
             parsed = parse_signal_response(reply)
 
-            if parsed:
+            def validate_signal(p):
+                try:
+                    tp = p["tp"]
+                    entry_1 = float(p["entry_1"])
+                    entry_2 = float(p["entry_2"])
+                    sl = float(p["stop_loss"])
+                    direction = p["direction"].lower()
+
+                    # Check TP spread (TP5 >= Entry +- 1%)
+                    tp_range_ok = abs(float(tp[-1]) - entry_1) / entry_1 >= 0.01
+
+                    # SL cách entry ít nhất 0.5%
+                    sl_range_ok = abs(entry_1 - sl) / entry_1 >= 0.005
+
+                    # Entry1 < Entry2 (for long) or Entry1 > Entry2 (for short)
+                    entry_order_ok = (entry_1 < entry_2) if direction == "long" else (entry_1 > entry_2)
+
+                    # Gắn nhãn chiến lược
+                    if entry_order_ok:
+                        p["strategy"] = "scale-in"
+                    else:
+                        p["strategy"] = "invalid"
+
+                    return tp_range_ok and sl_range_ok and entry_order_ok
+                except:
+                    return False
+
+            if parsed and isinstance(parsed, dict) and 'entry_1' in parsed and 'tp' in parsed and validate_signal(parsed):
                 results[symbol] = parsed
             else:
-                print(f"⚠️ GPT trả về không hợp lệ cho {symbol}.\n{reply}")
+                print(f"⚠️ GPT trả về không hợp lệ hoặc không đủ điều kiện lọc cho {symbol}.\n{reply}")
 
         except Exception as e:
             print(f"❌ GPT failed for {symbol}: {e}")
