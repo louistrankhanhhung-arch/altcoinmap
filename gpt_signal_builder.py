@@ -68,6 +68,7 @@ Chỉ trả về dữ liệu JSON.
                     tp_range_ok = abs(float(tp[-1]) - entry_1) / entry_1 >= 0.01
                     sl_range_ok = abs(entry_1 - sl) / entry_1 >= 0.005
 
+                    # Gắn nhãn chiến lược
                     if direction == "long":
                         if entry_1 > entry_2:
                             p["strategy_type"] = "DCA"
@@ -76,10 +77,10 @@ Chỉ trả về dữ liệu JSON.
                         else:
                             p["strategy_type"] = "⚠️ check entry logic"
                     elif direction == "short":
-                        if entry_1 > entry_2:
-                            p["strategy_type"] = "scale-in"
-                        elif entry_1 < entry_2:
+                        if entry_1 < entry_2:
                             p["strategy_type"] = "DCA"
+                        elif entry_1 > entry_2:
+                            p["strategy_type"] = "scale-in"
                         else:
                             p["strategy_type"] = "⚠️ check entry logic"
                     else:
