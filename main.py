@@ -58,6 +58,19 @@ def detect_candle_signal(candles):
         return "doji"
     return "none"
 
+def label_strategy_type(signal):
+    try:
+        e1 = signal.get("entry_1")
+        e2 = signal.get("entry_2")
+        direction = signal.get("direction", "").lower()
+        if direction == "long" and e1 and e2:
+            return "dca" if e1 > e2 else "scale_in"
+        elif direction == "short" and e1 and e2:
+            return "dca" if e1 < e2 else "scale_in"
+    except:
+        pass
+    return "unknown"
+
 def main():
     now = datetime.now(UTC)
     print(f"\n⏰ [UTC {now.strftime('%Y-%m-%d %H:%M:%S')}] Running scheduled scan...")
@@ -98,6 +111,10 @@ def main():
         signals_dict = asyncio.run(get_gpt_signals(data_by_symbol))
         signals = list(signals_dict.values())
         all_symbols = list(data_by_symbol.keys())
+
+        for sig in signals:
+            sig["strategy_type"] = label_strategy_type(sig)
+
         save_signals(signals, all_symbols, data_by_symbol)
         save_active_signals(signals)
 
