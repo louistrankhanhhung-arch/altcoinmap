@@ -36,25 +36,59 @@ def get_market_data(target_symbols):
 
 def build_prompt(context, coins):
     return f'''
-Bạn là chuyên gia phân tích kỹ thuật crypto.
+Bạn là một chuyên gia phân tích kỹ thuật crypto có nhiều kinh nghiệm.
 
-Bối cảnh thị trường:
+🎯 Nhiệm vụ: Phân tích kỹ dữ liệu của từng đồng coin (gồm các khung thời gian 1H, 4H, 1D) và chọn ra các tín hiệu giao dịch mạnh, đáng tin cậy để Long hoặc Short.
+
+---
+
+🧠 **Bối cảnh thị trường chung**:
 {context}
 
-Dữ liệu từng coin (multi-timeframe + chỉ báo kỹ thuật):
+---
+
+📈 **Dữ liệu từng đồng coin** (theo từng khung thời gian, đã tính RSI, MA20, MA50, Bollinger Bands):
+
 {json.dumps(coins, indent=2, ensure_ascii=False)}
 
-Yêu cầu:
-- Ưu tiên breakout, breakdown rõ (volume xác nhận).
-- Cho phép tín hiệu pullback hoặc hồi trong range nếu có tín hiệu rõ.
-- Loại Long nếu RSI thấp và nến đỏ xác nhận. Ngược lại với Short.
-- Bỏ qua tín hiệu nếu Entry nằm lệch so với vùng hỗ trợ/kháng cự chính (MA20/MA50).
-- Không dùng nếu không có xác nhận volume.
-- Đánh giá strength, tư vấn leverage phù hợp.
-- Entry gần với giá realtime.
-- Tối đa 1 tín hiệu/coin, chỉ giữ "strong" hoặc "moderate".
+---
 
-Trả về JSON:
+📌 **Yêu cầu phân tích**:
+
+1. Với mỗi đồng coin, đánh giá xu hướng ở từng khung thời gian:
+   - <b>1H trend</b>: dựa vào hướng MA20, MA50 và vị trí giá so với MA.
+   - <b>4H trend</b>: dùng để xác định cấu trúc sóng chính (ưu tiên xác nhận).
+   - <b>1D trend</b>: dùng để lọc bối cảnh lớn, xác định lực thị trường chung.
+
+2. Ưu tiên các tín hiệu có hội tụ từ nhiều khung:
+   - Ví dụ: 1H breakout, 4H đang có mô hình hồi, 1D vẫn còn uptrend.
+
+3. Lọc tín hiệu theo logic sau:
+   - Ưu tiên breakout rõ (Long khi vượt kháng cự kèm volume, Short khi thủng hỗ trợ).
+   - Chấp nhận pullback nếu có tín hiệu đảo chiều rõ (ví dụ bullish engulfing trên hỗ trợ).
+   - Không nhận Long nếu RSI < 40 + nến xác nhận đỏ. Không nhận Short nếu RSI > 60 + nến xanh.
+   - Bỏ qua nếu tín hiệu không khớp với xu hướng lớn (ví dụ short ở khung nhỏ nhưng khung lớn đang uptrend mạnh).
+   - Volume phải xác nhận cho tín hiệu breakout/pullback.
+
+4. Điều kiện tín hiệu hợp lệ:
+   - Entry quanh vùng giá realtime.
+   - TP1–TP5 phải hợp lý với cấu trúc giá và BB.
+   - Stop Loss rõ ràng, không đặt quá gần Entry.
+   - Nếu Entry nằm lệch hẳn MA20/MA50 hoặc phía sai so với BB – loại tín hiệu.
+
+5. Thông tin mỗi tín hiệu cần gồm:
+   - Nhận định đa khung gọn gàng, nêu rõ vì sao đây là tín hiệu tốt (ví dụ: 4H breakout xác nhận, 1D giữ uptrend).
+   - Rủi ro (risk_level): high / medium / low.
+   - Leverage khuyến nghị theo rủi ro.
+   - Key watch: chỉ số/chỉ báo/nến cần theo dõi tiếp theo để xác nhận tín hiệu.
+
+6. Với mỗi coin, chỉ trả tối đa 1 tín hiệu mạnh nhất.
+7. Chỉ giữ lại các tín hiệu có strength là "strong" hoặc "moderate".
+
+---
+
+📤 **Kết quả trả về**: <b>Chỉ trả JSON thuần</b> dạng:
+
 [
   {{
     "pair": "...",
@@ -66,12 +100,14 @@ Trả về JSON:
     "risk_level": "...",
     "leverage": "...",
     "key_watch": "...",
-    "assessment": "Nhận định ngắn gọn, không phóng đại",
+    "assessment": "Nhận định kỹ thuật ngắn gọn, đúng bản chất, không phóng đại",
     "strength": "strong" hoặc "moderate"
   }}
 ]
 
-Chỉ trả JSON thuần bằng tiếng Việt.
+⛔ Không đưa bất kỳ nhận xét, giải thích hay văn bản nào ngoài JSON.
+
+⛔ Trả lời bằng tiếng Việt với ngôn ngữ tài chính – kỹ thuật dành cho trader chuyên nghiệp.
 '''
 
 def build_signals(target_symbols=symbols):
