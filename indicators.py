@@ -26,7 +26,7 @@ def rsi(values, period=14):
         rs = up / down if down != 0 else 0
         rsi_series.append(100 - 100 / (1 + rs))
 
-    return [None] * (period) + rsi_series
+    return [None] * period + rsi_series
 
 def bollinger_bands(values, period=20):
     if len(values) < period:
@@ -42,20 +42,18 @@ def bollinger_bands(values, period=20):
         bands.append((lower, mean, upper))
     return bands
 
-def compute_indicators_for_all_timeframes(coin):
-    for tf in ["1H", "4H", "1D"]:
-        candles = coin[tf]
-        closes = [c['close'] for c in candles]
+def compute_indicators(candles):
+    closes = [c['close'] for c in candles]
 
-        rsi_vals = rsi(closes)
-        ma20_vals = sma(closes, 20)
-        ma50_vals = sma(closes, 50)
-        bb_vals = bollinger_bands(closes, 20)
+    rsi_vals = rsi(closes)
+    ma20_vals = sma(closes, 20)
+    ma50_vals = sma(closes, 50)
+    bb_vals = bollinger_bands(closes, 20)
 
-        for i in range(len(candles)):
-            candles[i]['rsi'] = rsi_vals[i]
-            candles[i]['ma20'] = ma20_vals[i]
-            candles[i]['ma50'] = ma50_vals[i]
-            candles[i]['bb_lower'], candles[i]['bb_mid'], candles[i]['bb_upper'] = bb_vals[i]
+    for i in range(len(candles)):
+        candles[i]['rsi'] = rsi_vals[i]
+        candles[i]['ma20'] = ma20_vals[i]
+        candles[i]['ma50'] = ma50_vals[i]
+        candles[i]['bb_lower'], candles[i]['bb_mid'], candles[i]['bb_upper'] = bb_vals[i]
 
-    return coin
+    return candles
