@@ -1,3 +1,4 @@
+import os
 import openai
 from datetime import datetime, UTC
 from utils import parse_signal_response
