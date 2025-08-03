@@ -18,6 +18,8 @@ def send_signals(signals):
             if isinstance(s, str):
                 send_message(s)
             else:
+                if 'pair' not in s:
+                    s['pair'] = s.get('symbol', 'UNKNOWN')
                 text = format_message(s)
                 send_message(text)
     elif isinstance(signals, str):
@@ -53,10 +55,14 @@ decimal_map = {
 }
 
 def format_price(val, symbol="BTC"):
-    if val is None:
+    try:
+        if val is None:
+            return "?"
+        decimals = decimal_map.get(symbol.split("/")[0], 2)
+        return f"{val:,.{decimals}f}"
+    except Exception as e:
+        print(f"⚠️ Giá trị không hợp lệ: {val}, lỗi: {e}")
         return "?"
-    decimals = decimal_map.get(symbol.split("/")[0], 2)
-    return f"{val:,.{decimals}f}"
 
 def format_message(s):
     try:
