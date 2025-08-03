@@ -13,6 +13,12 @@ symbols = [
     "SUI/USDT", "PENDLE/USDT"
 ]
 
+BLOCKS = {
+    "block1": ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT"],
+    "block2": ["LINK/USDT", "NEAR/USDT", "AVAX/USDT", "ARB/USDT"],
+    "block3": ["SUI/USDT", "PENDLE/USDT"]
+}
+
 interval_map = {
     "1H": "1hour",
     "4H": "4hour",
