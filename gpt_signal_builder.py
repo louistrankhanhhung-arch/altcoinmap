@@ -1,75 +1,60 @@
-import os  
+import os
 import json
-import re
 from datetime import datetime
 from kucoin_api import fetch_coin_data, fetch_realtime_price
 from openai import OpenAI
+from indicators import compute_indicators_for_all_timeframes
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def get_market_data():
-    symbols = [
-        "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "LINK/USDT",
-        "NEAR/USDT", "AVAX/USDT", "ARB/USDT", "SUI/USDT", "PENDLE/USDT"
-    ]
-    coin_data = []
+symbols = [
+    "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT",
+    "LINK/USDT", "NEAR/USDT", "AVAX/USDT", "ARB/USDT",
+    "SUI/USDT", "PENDLE/USDT"
+]
 
-    for symbol in symbols:
+interval_map = {
+    "1H": "1hour",
+    "4H": "4hour",
+    "1D": "1day"
+}
+
+def get_market_data(target_symbols):
+    coins = []
+
+    for symbol in target_symbols:
         try:
-            data = fetch_coin_data(symbol, interval="4hour", limit=100)
-            realtime = fetch_realtime_price(symbol)
-            coin_data.append({"symbol": symbol, "data": data, "realtime": realtime})
+            coin = {"symbol": symbol, "realtime": fetch_realtime_price(symbol)}
+            for tf, kucoin_tf in interval_map.items():
+                coin[tf] = fetch_coin_data(symbol, interval=kucoin_tf, limit=100)
+            compute_indicators_for_all_timeframes(coin)  # Add RSI, MA20, MA50, BB
+            coins.append(coin)
         except Exception as e:
-            print(f"❌ Lỗi khi fetch {symbol}: {e}")
+            print(f"❌ Lỗi khi fetch dữ liệu {symbol}: {e}")
 
-    context = "Phân tích kỹ thuật tổng thể dựa trên BTC/USDT hoặc market cap... (placeholder)"
+    return coins
 
-    return {
-        "context": context,
-        "coins": coin_data
-    }
+def build_prompt(context, coins):
+    return f'''
+Bạn là chuyên gia phân tích kỹ thuật crypto.
 
-def build_signals():
-    try:
-        market_data = get_market_data()
-        context = market_data["context"]
-        coin_data = market_data["coins"]
-        all_symbols = [coin["symbol"] for coin in coin_data]
-        raw_signals = coin_data
-
-        print("📘 Bối cảnh thị trường:")
-        print(context)
-        print("📈 Dữ liệu các coin:")
-        for coin in coin_data:
-            print(f"- {coin['symbol']}: {coin['data'][-1]} | Số nến: {len(coin['data'])} | Realtime: {coin['realtime']}")
-
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M")
-        debug_filename = f"debug_input_{timestamp}.json"
-        with open(debug_filename, "w") as f:
-            json.dump({"context": context, "coins": coin_data}, f, indent=2)
-
-        prompt = f'''
-Bạn là một chuyên gia giao dịch crypto. Hãy phân tích và chọn ra các tín hiệu mạnh từ dữ liệu sau:
-
-Bối cảnh thị trường chung:
+Bối cảnh thị trường:
 {context}
 
-Dữ liệu các đồng coin:
-{coin_data}
+Dữ liệu từng coin (multi-timeframe + chỉ báo kỹ thuật):
+{json.dumps(coins, indent=2, ensure_ascii=False)}
 
 Yêu cầu:
-- Ưu tiên các tín hiệu có xác suất cao: breakout rõ ràng (cho Long), breakdown mạnh (cho Short), volume vượt đỉnh, RSI quá mua/quá bán rõ.
-- Ngoài ra, chấp nhận các tín hiệu pullback (về MA, vùng hỗ trợ/kháng cự) hoặc sideways range có biến động tăng dần nếu có tín hiệu hồi phục hoặc đảo chiều rõ ràng.
-- Bỏ qua tín hiệu Long nếu RSI thấp nhưng nến xác nhận là nến đỏ. Bỏ qua tín hiệu Short nếu RSI cao nhưng nến xác nhận là nến xanh.
-- Không chọn tín hiệu Long nếu Entry nằm phía trên vùng kháng cự hoặc MA chính (MA20 hoặc MA50). Không chọn Short nếu Entry nằm dưới hỗ trợ.
-- Loại bỏ tín hiệu nếu không có xác nhận từ volume (ví dụ: breakout nhưng volume yếu).
-- Với mỗi tín hiệu, đánh giá mức độ: "strong", "moderate", hoặc "weak" và chỉ giữ tín hiệu "strong" hoặc "moderate".
-- Nếu có tín hiệu Long và Short đồng thời trên cùng một đồng coin, chỉ giữ tín hiệu có xác suất cao hơn.
-- Tư vấn đòn bẩy (leverage) phù hợp với mức độ rủi ro của tín hiệu (ví dụ: x3 cho tín hiệu có rủi ro cao, x10 cho tín hiệu an toàn và rõ ràng).
-- Entry 1 và Entry 2 nên nằm quanh giá real-time (giá realtime đã được cung cấp cho từng coin).
-- Chỉ phát tối đa 1 tín hiệu cho mỗi đồng coin.
-- Nếu không có tín hiệu mạnh, loại bỏ coin đó khỏi kết quả.
-- Trả về **chỉ JSON thuần túy** theo định dạng:
+- Ưu tiên breakout, breakdown rõ (volume xác nhận).
+- Cho phép tín hiệu pullback hoặc hồi trong range nếu có tín hiệu rõ.
+- Loại Long nếu RSI thấp và nến đỏ xác nhận. Ngược lại với Short.
+- Bỏ qua tín hiệu nếu Entry nằm lệch so với vùng hỗ trợ/kháng cự chính (MA20/MA50).
+- Không dùng nếu không có xác nhận volume.
+- Đánh giá strength, tư vấn leverage phù hợp.
+- Entry gần với giá realtime.
+- Tối đa 1 tín hiệu/coin, chỉ giữ "strong" hoặc "moderate".
+
+Trả về JSON:
 [
   {{
     "pair": "...",
@@ -81,13 +66,25 @@ Yêu cầu:
     "risk_level": "...",
     "leverage": "...",
     "key_watch": "...",
-    "assessment": "Viết nhận định ngắn gọn, đúng bản chất tín hiệu kỹ thuật, không phóng đại",
+    "assessment": "Nhận định ngắn gọn, không phóng đại",
     "strength": "strong" hoặc "moderate"
   }}
 ]
 
-Trả lời bằng tiếng Việt, dùng từ ngữ tài chính – kỹ thuật phù hợp với trader Việt. Không thêm giải thích ngoài JSON.
+Chỉ trả JSON thuần bằng tiếng Việt.
 '''
+
+def build_signals(target_symbols=symbols):
+    try:
+        context = "Tổng quan thị trường đang được đánh giá trung tính đến tích cực, BTC giữ trên MA50 khung ngày."
+        coins = get_market_data(target_symbols)
+
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M")
+        debug_filename = f"debug_input_{timestamp}.json"
+        with open(debug_filename, "w") as f:
+            json.dump({"context": context, "coins": coins}, f, indent=2)
+
+        prompt = build_prompt(context, coins)
 
         response = client.chat.completions.create(
             model="gpt-4o",
@@ -95,39 +92,19 @@ Trả lời bằng tiếng Việt, dùng từ ngữ tài chính – kỹ thuật
         )
 
         result = response.choices[0].message.content.strip()
-
         json_start = result.find("[")
         json_end = result.rfind("]")
+
         if json_start == -1 or json_end == -1:
             print("⚠️ Không tìm thấy JSON hợp lệ trong GPT output.")
-            return [], all_symbols, raw_signals
+            return [], [coin["symbol"] for coin in coins], coins
 
-        result = result[json_start:json_end + 1]
-
-        print("📤 GPT Output:")
-        print(result)
-
-        if "null" in result.lower():
-            return [], all_symbols, raw_signals
-
-        try:
-            parsed = json.loads(result)
-        except json.JSONDecodeError as e:
-            print(f"❌ JSON decode error: {e}")
-            print("🔍 Raw GPT result:")
-            print(result)
-            return [], all_symbols, raw_signals
+        parsed = json.loads(result[json_start:json_end + 1])
 
         required_keys = {"pair", "direction", "entry_1", "entry_2", "stop_loss", "tp", "risk_level", "leverage", "key_watch", "assessment", "strength"}
-        valid_signals = []
+        valid_signals = [s for s in parsed if required_keys.issubset(s.keys())]
 
-        for s in parsed:
-            if all(k in s for k in required_keys):
-                valid_signals.append(s)
-            else:
-                print(f"⚠️ Thiếu trường trong tín hiệu: {s}")
-
-        return valid_signals, all_symbols, raw_signals
+        return valid_signals, [coin["symbol"] for coin in coins], coins
 
     except Exception as e:
         print(f"❌ GPT error: {e}")
