@@ -6,6 +6,9 @@ from utils import parse_signal_response
 async def get_gpt_signals(data_by_symbol):
     results = {}
 
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    client = openai.AsyncOpenAI()  # ✅ SDK mới
+
     for symbol, tf_data in data_by_symbol.items():
         try:
             summary_lines = []
@@ -40,7 +43,7 @@ Chỉ trả về dữ liệu JSON.
             now = datetime.now(UTC)
             print(f"\n🤖 GPT analyzing {symbol} at {now.isoformat()}...")
 
-            response = await openai.ChatCompletion.acreate(
+            response = await client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "user", "content": prompt.strip()}
