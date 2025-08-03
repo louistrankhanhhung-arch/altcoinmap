@@ -27,7 +27,7 @@ def fetch_coin_data(symbol, interval="4hour", limit=100):
             result = []
             for c in reversed(candles):  # đảo ngược về thời gian gần nhất
                 result.append({
-                    "time": datetime.fromtimestamp(c[0] / 1000, tz=timezone.utc).isoformat(),
+                    "time": datetime.fromtimestamp(int(c[0]) / 1000, tz=timezone.utc).isoformat(),
                     "open": float(c[1]),
                     "close": float(c[2]),
                     "high": float(c[3]),
@@ -42,7 +42,6 @@ def fetch_coin_data(symbol, interval="4hour", limit=100):
 
     raise Exception(f"❌ Không thể fetch dữ liệu cho {symbol} sau 3 lần thử.")
 
-
 def fetch_realtime_price(symbol):
     base_url = "https://api.kucoin.com/api/v1/market/orderbook/level1"
     symbol_kucoin = symbol.replace("/", "-")
@@ -55,9 +54,7 @@ def fetch_realtime_price(symbol):
     data = response.json()
     return float(data["data"]["price"])
 
-
 def get_market_data(symbols: list[str], interval="4hour", limit=100):
-    """Hàm gộp để dùng trong main.py"""
     result = {}
     for symbol in symbols:
         result[symbol] = fetch_coin_data(symbol, interval, limit)
