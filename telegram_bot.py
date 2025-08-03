@@ -5,13 +5,23 @@ BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
 USER_ID = os.getenv("USER_ID")
 
 def send_signals(signals):
+    if not BOT_TOKEN or not USER_ID:
+        print("⚠️ Chưa thiết lập TELEGRAM_TOKEN hoặc USER_ID.")
+        return
+
     if not signals:
         send_message("⚠️ Không có tín hiệu đủ mạnh ở thời điểm này.")
         return
 
-    for s in signals:
-        text = format_message(s)
-        send_message(text)
+    if isinstance(signals, list):
+        for s in signals:
+            if isinstance(s, str):
+                send_message(s)
+            else:
+                text = format_message(s)
+                send_message(text)
+    elif isinstance(signals, str):
+        send_message(signals)
 
 def send_message(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -20,12 +30,14 @@ def send_message(text):
         "text": text,
         "parse_mode": "HTML"
     }
-    response = requests.post(url, json=data)
-
-    if response.status_code != 200:
-        print(f"❌ Failed to send message: {response.status_code} - {response.text}")
-    else:
-        print("✅ Message sent to Telegram.")
+    try:
+        response = requests.post(url, json=data, timeout=10)
+        if response.status_code != 200:
+            print(f"❌ Failed to send message: {response.status_code} - {response.text}")
+        else:
+            print("✅ Message sent to Telegram.")
+    except Exception as e:
+        print(f"❌ Telegram send failed: {e}")
 
 decimal_map = {
     "BTC": 2,
@@ -41,6 +53,8 @@ decimal_map = {
 }
 
 def format_price(val, symbol="BTC"):
+    if val is None:
+        return "?"
     decimals = decimal_map.get(symbol.split("/")[0], 2)
     return f"{val:,.{decimals}f}"
 
