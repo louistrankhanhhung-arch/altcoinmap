@@ -13,6 +13,27 @@ ACTIVE_FILE = "active_signals.json"
 
 TF_MAP = {"1H": "1hour", "4H": "4hour", "1D": "1day"}
 
+PROMPT_TEMPLATE = """
+Bạn là một trợ lý giao dịch crypto chuyên nghiệp.
+Dưới đây là dữ liệu kỹ thuật của {symbol} theo từng khung thời gian:
+
+{summary}
+
+Dựa trên xu hướng, lực nến, RSI, MA, và vùng BB, hãy đánh giá xem có cơ hội giao dịch không.
+Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau:
+- Direction: Long hoặc Short
+- Entry 1:
+- Entry 2:
+- Stop Loss:
+- TP1 đến TP5:
+- Risk Level:
+- Leverage:
+- Key watch:
+- Nhận định ngắn gọn về tín hiệu này bằng tiếng Việt.
+
+Chỉ trả về dữ liệu JSON.
+"""
+
 def save_active_signals(signals):
     now = datetime.now(UTC).isoformat()
     for s in signals:
