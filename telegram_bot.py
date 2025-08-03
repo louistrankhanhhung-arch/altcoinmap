@@ -68,7 +68,8 @@ def format_message(s):
 💰 <b>TPs:</b> {', '.join(format_price(p, base_symbol) for p in s['tp'])}
 🧠 <b>Assessment:</b> {s.get('assessment', 'Không có đánh giá')}
 ⚖️ <b>Risk:</b> {s.get('risk_level', '?')} | <b>Leverage:</b> {s.get('leverage', 'x5')}
-📐 <b>Strategy:</b> {s.get('strategy_type', '...')} | <b>Confidence:</b> {s.get('confidence', '?')}
+📐 <b>Strategy:</b> {s.get('strategy_type', '...')}
+🔎 <b>Confidence:</b> {s.get('confidence', '?')}
 🔍 <b>Key Watch:</b> {s.get('key_watch', '...')}"""
     except Exception as e:
         return "⚠️ Định dạng tín hiệu lỗi: " + str(e)
