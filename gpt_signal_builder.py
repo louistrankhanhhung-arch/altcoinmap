@@ -99,12 +99,12 @@ Chỉ trả về dữ liệu JSON.
                     if strategy_type == "scale-in":
                         if direction == "long":
                             p["entry_2"] = round(entry_1 * (1 + spread_pct), 2)
-                        else:
+                        elif direction == "short":
                             p["entry_2"] = round(entry_1 * (1 - spread_pct), 2)
-                    else:
+                    elif strategy_type == "DCA":
                         if direction == "long":
                             p["entry_2"] = round(entry_1 * (1 - spread_pct), 2)
-                        else:
+                        elif direction == "short":
                             p["entry_2"] = round(entry_1 * (1 + spread_pct), 2)
 
                     # Tính confidence
