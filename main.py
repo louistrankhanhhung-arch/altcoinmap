@@ -8,6 +8,7 @@ from kucoin_api import fetch_coin_data
 from telegram_bot import send_signals
 from signal_logger import save_signals
 from indicators import compute_indicators
+from signal_tracker import is_duplicate_signal
 
 ACTIVE_FILE = "active_signals.json"
 
@@ -101,6 +102,7 @@ def run_block(block_name):
         print("📊 Sending to GPT...")
         signals_dict = asyncio.run(get_gpt_signals(data_by_symbol))
         signals = list(signals_dict.values())
+        signals = [s for s in signals if not is_duplicate_signal(s)]
         all_symbols = list(data_by_symbol.keys())
 
         for sig in signals:
