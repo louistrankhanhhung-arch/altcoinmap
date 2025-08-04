@@ -28,6 +28,8 @@ Dưới đây là dữ liệu kỹ thuật của {symbol} theo từng khung th�
 
 Dựa trên xu hướng, lực nến, RSI, MA, và vùng BB, hãy đánh giá xem có cơ hội giao dịch không.
 Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau:
+
+- Symbol: {symbol} 
 - Direction: Long hoặc Short
 - Entry 1:
 - Stop Loss:
@@ -54,6 +56,8 @@ Chỉ trả về dữ liệu JSON.
             reply = response.choices[0].message.content
             print(f"📩 GPT raw reply for {symbol}:", reply)
             parsed = parse_signal_response(reply)
+            parsed["pair"] = symbol
+
 
             if not parsed:
                 print(f"⚠️ GPT trả về định dạng không hợp lệ cho {symbol}.")
