@@ -25,6 +25,10 @@ def parse_signal_response(reply):
                 if key in result:
                     result["tp"].append(float(str(result[key]).replace(",", "")))
 
+            # Đảm bảo có cả nhận định và mã giao dịch nếu có
+            result["assessment"] = result.get("nhận_định", result.get("nhận_định_ngắn_gọn", "Không có đánh giá"))
+            result["pair"] = result.get("symbol", result.get("pair", "UNKNOWN"))
+
             return result if "entry_1" in result and "stop_loss" in result and result["tp"] else None
         except json.JSONDecodeError:
             pass  # fallback nếu không phải JSON chuẩn
@@ -55,6 +59,9 @@ def parse_signal_response(reply):
                     pass
             else:
                 result[key] = val
+
+        result["assessment"] = result.get("nhận_định", result.get("nhận_định_ngắn_gọn", "Không có đánh giá"))
+        result["pair"] = result.get("symbol", result.get("pair", "UNKNOWN"))
 
         required_fields = ["entry_1", "stop_loss", "tp"]
         for field in required_fields:
