@@ -30,7 +30,6 @@ Dựa trên xu hướng, lực nến, RSI, MA, và vùng BB, hãy đánh giá xe
 Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau:
 - Direction: Long hoặc Short
 - Entry 1:
-- Entry 2:
 - Stop Loss:
 - TP1 đến TP5:
 - Risk Level:
@@ -61,7 +60,6 @@ Chỉ trả về dữ liệu JSON.
                 try:
                     tp = p["tp"]
                     entry_1 = float(p["entry_1"])
-                    entry_2 = float(p["entry_2"])
                     sl = float(p["stop_loss"])
                     direction = p["direction"].lower()
 
@@ -77,58 +75,63 @@ Chỉ trả về dữ liệu JSON.
                     candle_1h = tf_data.get("1H", {}).get("candle_signal", "none")
                     candle_4h = tf_data.get("4H", {}).get("candle_signal", "none")
 
-                    signal_strength = 0
-
-                    # Chọn chiến lược theo điều kiện thị trường
+                    # Ưu tiên scale-in nếu trend mạnh và đồng pha
+                    strategy_type = ""
                     if direction == "long":
-                        if trend_1h == trend_4h == trend_1d == "uptrend" and candle_1h == "bullish engulfing" and rsi_1h and rsi_1h > 55:
-                            p["strategy_type"] = "scale-in"
-                        elif trend_1d != trend_4h or trend_1h != trend_4h:
-                            p["strategy_type"] = "DCA"
-                        else:
-                            p["strategy_type"] = "unknown"
-
+                        if trend_1h == trend_4h == trend_1d == "uptrend" and rsi_1h and rsi_1h > 55:
+                            strategy_type = "scale-in"
+                        elif trend_1d != trend_4h or trend_4h != trend_1h:
+                            strategy_type = "DCA"
                     elif direction == "short":
-                        if trend_1h == trend_4h == trend_1d == "downtrend" and candle_1h == "bearish engulfing" and rsi_1h and rsi_1h < 45:
-                            p["strategy_type"] = "scale-in"
-                        elif trend_1d != trend_4h or trend_1h != trend_4h:
-                            p["strategy_type"] = "DCA"
-                        else:
-                            p["strategy_type"] = "unknown"
-
-                    # Gắn entry_2 theo chiến lược
-                    if p["strategy_type"] == "scale-in":
-                        if direction == "long" and entry_2 > entry_1:
-                            pass  # đúng hướng
-                        elif direction == "short" and entry_2 < entry_1:
-                            pass
-                        else:
-                            return False
-                    elif p["strategy_type"] == "DCA":
-                        if direction == "long" and entry_2 < entry_1:
-                            pass
-                        elif direction == "short" and entry_2 > entry_1:
-                            pass
-                        else:
-                            return False
-                    else:
+                        if trend_1h == trend_4h == trend_1d == "downtrend" and rsi_1h and rsi_1h < 45:
+                            strategy_type = "scale-in"
+                        elif trend_1d != trend_4h or trend_4h != trend_1h:
+                            strategy_type = "DCA"
+                    if not strategy_type:
                         return False
+                    p["strategy_type"] = strategy_type
+
+                    # Tự động tính entry_2 dựa trên chiến lược
+                    spread_pct = 0.005
+                    if strategy_type == "scale-in":
+                        if direction == "long":
+                            p["entry_2"] = round(entry_1 * (1 + spread_pct), 2)
+                        else:
+                            p["entry_2"] = round(entry_1 * (1 - spread_pct), 2)
+                    else:
+                        if direction == "long":
+                            p["entry_2"] = round(entry_1 * (1 - spread_pct), 2)
+                        else:
+                            p["entry_2"] = round(entry_1 * (1 + spread_pct), 2)
 
                     # Tính confidence
-                    if p["strategy_type"] == "scale-in":
-                        if trend_1h == trend_4h == trend_1d and candle_1h in ["bullish engulfing", "bearish engulfing"]:
-                            signal_strength += 2
-                        if (direction == "long" and rsi_1h and rsi_1h > 60) or (direction == "short" and rsi_1h and rsi_1h < 40):
-                            signal_strength += 1
-                    elif p["strategy_type"] == "DCA":
-                        if candle_4h in ["bullish engulfing", "bearish engulfing"]:
-                            signal_strength += 1
-                        if (direction == "long" and rsi_4h and rsi_4h < 40) or (direction == "short" and rsi_4h and rsi_4h > 60):
-                            signal_strength += 1
+                    score = 0
+                    if strategy_type == "scale-in":
+                        if trend_1h == trend_4h == trend_1d:
+                            score += 1
+                        if candle_1h in ["bullish engulfing"] and direction == "long":
+                            score += 1
+                        if candle_1h in ["bearish engulfing"] and direction == "short":
+                            score += 1
+                        if direction == "long" and rsi_1h and rsi_1h > 60:
+                            score += 1
+                        if direction == "short" and rsi_1h and rsi_1h < 40:
+                            score += 1
+                    else:
+                        if trend_1h != trend_4h or trend_4h != trend_1d:
+                            score += 1
+                        if candle_4h in ["bullish engulfing"] and direction == "long":
+                            score += 1
+                        if candle_4h in ["bearish engulfing"] and direction == "short":
+                            score += 1
+                        if direction == "long" and rsi_4h and rsi_4h < 40:
+                            score += 1
+                        if direction == "short" and rsi_4h and rsi_4h > 60:
+                            score += 1
 
-                    if signal_strength >= 2:
+                    if score >= 3:
                         p["confidence"] = "high"
-                    elif signal_strength == 1:
+                    elif score == 2:
                         p["confidence"] = "medium"
                     else:
                         p["confidence"] = "low"
