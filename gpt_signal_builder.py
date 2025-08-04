@@ -58,20 +58,15 @@ Chỉ trả về dữ liệu JSON.
             parsed = parse_signal_response(reply)
             parsed["pair"] = symbol
 
-
             if not parsed:
                 print(f"⚠️ GPT trả về định dạng không hợp lệ cho {symbol}.")
                 continue
 
             def validate_signal(p, tf_data):
                 try:
-                    tp = p["tp"]
                     entry_1 = float(p["entry_1"])
                     sl = float(p["stop_loss"])
                     direction = p["direction"].lower()
-
-                    tp_range_ok = abs(float(tp[-1]) - entry_1) / entry_1 >= 0.01
-                    sl_range_ok = abs(entry_1 - sl) / entry_1 >= 0.005
 
                     trend_1h = tf_data.get("1H", {}).get("trend", "unknown")
                     trend_4h = tf_data.get("4H", {}).get("trend", "unknown")
@@ -102,17 +97,23 @@ Chỉ trả về dữ liệu JSON.
                     # Tự động tính entry_2 dựa trên chiến lược
                     spread_pct = 0.005
                     if strategy_type == "scale-in":
-                        if direction == "long":
-                            p["entry_2"] = round(entry_1 * (1 + spread_pct), 2)
-                        elif direction == "short":
-                            p["entry_2"] = round(entry_1 * (1 - spread_pct), 2)
+                        p["entry_2"] = round(entry_1 * (1 + spread_pct), 2) if direction == "long" else round(entry_1 * (1 - spread_pct), 2)
                     elif strategy_type == "DCA":
-                        if direction == "long":
-                            p["entry_2"] = round(entry_1 * (1 - spread_pct), 2)
-                        elif direction == "short":
-                            p["entry_2"] = round(entry_1 * (1 + spread_pct), 2)
+                        p["entry_2"] = round(entry_1 * (1 - spread_pct), 2) if direction == "long" else round(entry_1 * (1 + spread_pct), 2)
 
-                    # Tính confidence
+                    # Sử dụng SR levels để tính TP
+                    sr_levels = tf_data.get("1D", {}).get("sr_levels", [])
+                    if direction == "long":
+                        resistances = sorted([price for _, price, typ in sr_levels if typ == "resistance" and price > entry_1])
+                        p["tp"] = resistances[:5] if resistances else [round(entry_1 * (1 + i * 0.01), 2) for i in range(1, 6)]
+                    elif direction == "short":
+                        supports = sorted([price for _, price, typ in sr_levels if typ == "support" and price < entry_1], reverse=True)
+                        p["tp"] = supports[:5] if supports else [round(entry_1 * (1 - i * 0.01), 2) for i in range(1, 6)]
+
+                    tp = p["tp"]
+                    tp_range_ok = abs(float(tp[-1]) - entry_1) / entry_1 >= 0.01
+                    sl_range_ok = abs(entry_1 - sl) / entry_1 >= 0.005
+
                     score = 0
                     if strategy_type == "scale-in":
                         if trend_1h == trend_4h == trend_1d:
@@ -137,12 +138,7 @@ Chỉ trả về dữ liệu JSON.
                         if direction == "short" and rsi_4h and rsi_4h > 60:
                             score += 1
 
-                    if score >= 3:
-                        p["confidence"] = "high"
-                    elif score == 2:
-                        p["confidence"] = "medium"
-                    else:
-                        p["confidence"] = "low"
+                    p["confidence"] = "high" if score >= 3 else "medium" if score == 2 else "low"
 
                     return tp_range_ok and sl_range_ok and p["confidence"] in ["high", "medium"]
 
