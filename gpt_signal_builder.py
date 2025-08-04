@@ -90,6 +90,7 @@ Chỉ trả về dữ liệu JSON.
                         elif trend_1d != trend_4h or trend_4h != trend_1h:
                             strategy_type = "DCA"
                     if not strategy_type:
+                        print(f"⚠️ Không thể xác định chiến lược cho {symbol}. Bỏ qua.")
                         return False
                     p["strategy_type"] = strategy_type
 
@@ -140,10 +141,10 @@ Chỉ trả về dữ liệu JSON.
 
                     return tp_range_ok and sl_range_ok and p["confidence"] in ["high", "medium"]
 
-                except:
+                except Exception as err:
+                    print(f"❌ Lỗi khi validate {symbol}: {err}")
                     return False
 
-            # Áp dụng lọc
             is_valid = validate_signal(parsed, tf_data)
             if is_valid:
                 results[symbol] = parsed
@@ -154,7 +155,6 @@ Chỉ trả về dữ liệu JSON.
             print(f"❌ GPT failed for {symbol}: {e}")
 
     return results
-
 
 BLOCKS = {
     "block1": ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT"],
