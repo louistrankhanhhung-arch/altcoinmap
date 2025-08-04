@@ -71,17 +71,8 @@ def label_strategy_type(signal):
         pass
     return "unknown"
 
-def main():
-    now = datetime.now(UTC)
-    print(f"\n⏰ [UTC {now.strftime('%Y-%m-%d %H:%M:%S')}] Running scheduled scan...")
-
-    if len(sys.argv) < 2:
-        print("❌ Thiếu tham số block. Vui lòng dùng: python main.py block1/block2/block3")
-        return
-
-    block_name = sys.argv[1]
+def run_block(block_name):
     symbols = BLOCKS.get(block_name)
-
     if not symbols:
         print(f"❌ Block không hợp lệ: {block_name}")
         return
@@ -103,7 +94,7 @@ def main():
                 enriched[tf] = {
                     "trend": trend,
                     "candle_signal": signal,
-                    **candles[-1]  # lấy dữ liệu kỹ thuật nến mới nhất
+                    **candles[-1]
                 }
             data_by_symbol[symbol] = enriched
 
@@ -119,16 +110,29 @@ def main():
         save_active_signals(signals)
 
         if signals:
-            print(f"\n✅ {len(signals)} signal(s) found. Sending to Telegram...")
+            print(f"✅ {len(signals)} signal(s) found in {block_name}. Sending to Telegram...")
             send_signals(signals)
         else:
-            print("\n⚠️ No strong signals detected. Sending announcement...")
+            print(f"⚠️ No strong signals detected in {block_name}. Sending announcement...")
             send_signals([])
 
     except Exception as e:
-        print(f"\n❌ Main error: {e}")
+        print(f"❌ Main error in {block_name}: {e}")
         traceback.print_exc()
-        send_signals(["⚠️ Lỗi khi chạy hệ thống: " + str(e)])
+        send_signals([f"⚠️ Lỗi khi chạy hệ thống với {block_name}: {str(e)}"])
+
+def main():
+    now = datetime.now(UTC)
+    print(f"\n⏰ [UTC {now.strftime('%Y-%m-%d %H:%M:%S')}] Running scheduled scan...")
+
+    if len(sys.argv) == 2:
+        if sys.argv[1] == "all":
+            for blk in BLOCKS:
+                run_block(blk)
+        else:
+            run_block(sys.argv[1])
+    else:
+        print("❌ Thiếu tham số block. Dùng: python main.py block1 | block2 | block3 | all")
 
 if __name__ == "__main__":
     main()
