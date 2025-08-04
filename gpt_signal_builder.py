@@ -8,7 +8,7 @@ async def get_gpt_signals(data_by_symbol):
     results = {}
 
     openai.api_key = os.getenv("OPENAI_API_KEY")
-    client = openai.AsyncOpenAI()  # ✅ SDK mới
+    client = openai.AsyncOpenAI()
 
     for symbol, tf_data in data_by_symbol.items():
         try:
@@ -45,9 +45,7 @@ Chỉ trả về dữ liệu JSON.
 
             response = await client.chat.completions.create(
                 model="gpt-4o",
-                messages=[
-                    {"role": "user", "content": prompt.strip()}
-                ],
+                messages=[{"role": "user", "content": prompt.strip()}],
                 temperature=0.4,
                 max_tokens=1000,
                 timeout=30
@@ -56,7 +54,11 @@ Chỉ trả về dữ liệu JSON.
             reply = response.choices[0].message.content
             parsed = parse_signal_response(reply)
 
-            def validate_signal(p):
+            if not parsed:
+                print(f"⚠️ GPT trả về định dạng không hợp lệ cho {symbol}.\n{reply}")
+                continue
+
+            def validate_signal(p, tf_data):
                 try:
                     tp = p["tp"]
                     entry_1 = float(p["entry_1"])
@@ -141,15 +143,18 @@ Chỉ trả về dữ liệu JSON.
                 except:
                     return False
 
-            if parsed and isinstance(parsed, dict) and 'entry_1' in parsed and 'tp' in parsed and validate_signal(parsed):
+            # Áp dụng lọc
+            is_valid = validate_signal(parsed, tf_data)
+            if is_valid:
                 results[symbol] = parsed
             else:
-                print(f"⚠️ GPT trả về không hợp lệ hoặc không đủ điều kiện lọc cho {symbol}.\n{reply}")
+                print(f"✅ GPT trả về JSON hợp lệ nhưng bị loại do lọc logic cho {symbol}.\n{parsed}")
 
         except Exception as e:
             print(f"❌ GPT failed for {symbol}: {e}")
 
     return results
+
 
 BLOCKS = {
     "block1": ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT"],
