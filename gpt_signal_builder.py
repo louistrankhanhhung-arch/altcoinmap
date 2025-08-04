@@ -77,7 +77,6 @@ Chỉ trả về dữ liệu JSON.
                     candle_1h = tf_data.get("1H", {}).get("candle_signal", "none")
                     candle_4h = tf_data.get("4H", {}).get("candle_signal", "none")
 
-                    # Ưu tiên scale-in nếu trend mạnh và đồng pha
                     strategy_type = ""
                     if direction == "long":
                         if trend_1h == trend_4h == trend_1d == "uptrend" and rsi_1h and rsi_1h > 55:
@@ -94,21 +93,30 @@ Chỉ trả về dữ liệu JSON.
                         return False
                     p["strategy_type"] = strategy_type
 
-                    # Tự động tính entry_2 dựa trên chiến lược
                     spread_pct = 0.005
                     if strategy_type == "scale-in":
                         p["entry_2"] = round(entry_1 * (1 + spread_pct), 2) if direction == "long" else round(entry_1 * (1 - spread_pct), 2)
                     elif strategy_type == "DCA":
                         p["entry_2"] = round(entry_1 * (1 - spread_pct), 2) if direction == "long" else round(entry_1 * (1 + spread_pct), 2)
 
-                    # Sử dụng SR levels để tính TP
-                    sr_levels = tf_data.get("1D", {}).get("sr_levels", [])
+                    # Sử dụng SR levels để tính TP chia theo cấp độ
+                    sr_4h = tf_data.get("4H", {}).get("sr_levels", [])
+                    sr_1d = tf_data.get("1D", {}).get("sr_levels", [])
+
                     if direction == "long":
-                        resistances = sorted([price for _, price, typ in sr_levels if typ == "resistance" and price > entry_1])
-                        p["tp"] = resistances[:5] if resistances else [round(entry_1 * (1 + i * 0.01), 2) for i in range(1, 6)]
+                        r4h = sorted([price for _, price, typ in sr_4h if typ == "resistance" and price > entry_1])
+                        r1d = sorted([price for _, price, typ in sr_1d if typ == "resistance" and price > entry_1])
+                        tps = r4h[:2] + r1d[:3]
+                        while len(tps) < 5:
+                            tps.append(round(entry_1 * (1 + 0.01 * (len(tps) + 1)), 2))
+                        p["tp"] = tps[:5]
                     elif direction == "short":
-                        supports = sorted([price for _, price, typ in sr_levels if typ == "support" and price < entry_1], reverse=True)
-                        p["tp"] = supports[:5] if supports else [round(entry_1 * (1 - i * 0.01), 2) for i in range(1, 6)]
+                        s4h = sorted([price for _, price, typ in sr_4h if typ == "support" and price < entry_1], reverse=True)
+                        s1d = sorted([price for _, price, typ in sr_1d if typ == "support" and price < entry_1], reverse=True)
+                        tps = s4h[:2] + s1d[:3]
+                        while len(tps) < 5:
+                            tps.append(round(entry_1 * (1 - 0.01 * (len(tps) + 1)), 2))
+                        p["tp"] = tps[:5]
 
                     tp = p["tp"]
                     tp_range_ok = abs(float(tp[-1]) - entry_1) / entry_1 >= 0.01
