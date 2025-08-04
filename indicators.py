@@ -42,6 +42,29 @@ def bollinger_bands(values, period=20):
         bands.append((lower, mean, upper))
     return bands
 
+def detect_support_resistance(candles, window=20, tolerance=0.005):
+    prices = [c["close"] for c in candles]
+    levels = []
+    for i in range(window, len(prices) - window):
+        curr_price = prices[i]
+        before = prices[i - window:i]
+        after = prices[i + 1:i + 1 + window]
+
+        # Support
+        if all(curr_price < x for x in before) and all(curr_price < x for x in after):
+            levels.append((i, curr_price, 'support'))
+        # Resistance
+        elif all(curr_price > x for x in before) and all(curr_price > x for x in after):
+            levels.append((i, curr_price, 'resistance'))
+
+    # Lọc trùng mức gần nhau
+    filtered = []
+    for idx, price, level_type in levels:
+        if not any(abs(price - p[1]) / price < tolerance for p in filtered if p[2] == level_type):
+            filtered.append((idx, price, level_type))
+
+    return filtered
+
 def compute_indicators(candles):
     closes = [c['close'] for c in candles]
 
@@ -55,5 +78,8 @@ def compute_indicators(candles):
         candles[i]['ma20'] = ma20_vals[i]
         candles[i]['ma50'] = ma50_vals[i]
         candles[i]['bb_lower'], candles[i]['bb_mid'], candles[i]['bb_upper'] = bb_vals[i]
+
+    # Tính các mức hỗ trợ/kháng cự từ khung D1
+    candles[-1]["sr_levels"] = detect_support_resistance(candles)
 
     return candles
