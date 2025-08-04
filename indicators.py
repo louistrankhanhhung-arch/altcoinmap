@@ -79,3 +79,20 @@ def compute_indicators(candles):
     candles[-1]["sr_levels"] = detect_support_resistance(candles)
 
     return candles
+
+
+def classify_trend(candles):
+    if not candles or candles[-1].get("ma20") is None:
+        return "unknown"
+    price = candles[-1]["close"]
+    ma20 = candles[-1]["ma20"]
+    ma50 = candles[-1]["ma50"]
+
+    if ma20 and ma50:
+        if price > ma20 > ma50:
+            return "uptrend"
+        elif price < ma20 < ma50:
+            return "downtrend"
+        else:
+            return "sideways"
+    return "unknown"
