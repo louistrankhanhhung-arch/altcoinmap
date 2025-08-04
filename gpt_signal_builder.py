@@ -52,10 +52,11 @@ Chỉ trả về dữ liệu JSON.
             )
 
             reply = response.choices[0].message.content
+            print(f"📩 GPT raw reply for {symbol}:", reply)
             parsed = parse_signal_response(reply)
 
             if not parsed:
-                print(f"⚠️ GPT trả về định dạng không hợp lệ cho {symbol}.\n{reply}")
+                print(f"⚠️ GPT trả về định dạng không hợp lệ cho {symbol}.")
                 continue
 
             def validate_signal(p, tf_data):
@@ -149,7 +150,7 @@ Chỉ trả về dữ liệu JSON.
             if is_valid:
                 results[symbol] = parsed
             else:
-                print(f"✅ GPT trả về JSON hợp lệ nhưng bị loại do lọc logic cho {symbol}.\n{parsed}")
+                print(f"✅ GPT trả về JSON hợp lệ nhưng bị loại do lọc logic cho {symbol}.")
 
         except Exception as e:
             print(f"❌ GPT failed for {symbol}: {e}")
