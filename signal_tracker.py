@@ -3,6 +3,8 @@ import os
 from datetime import datetime, timedelta
 from kucoin_api import fetch_realtime_price
 from telegram_bot import send_message
+from indicators import classify_trend, compute_indicators
+from kucoin_api import fetch_coin_data
 
 ACTIVE_FILE = "active_signals.json"
 
@@ -18,6 +20,15 @@ def save_active_signals(signals):
     with open(ACTIVE_FILE, "w") as f:
         json.dump(signals, f, indent=2)
 
+# Check if a signal is duplicated (same pair + direction is open)
+def is_duplicate_signal(new_sig):
+    active = load_active_signals()
+    for sig in active:
+        if sig["pair"] == new_sig["pair"] and sig.get("status", "open") == "open":
+            if sig["direction"].lower() == new_sig["direction"].lower():
+                return True
+    return False
+
 def check_signals():
     active_signals = load_active_signals()
     updated_signals = []
@@ -28,15 +39,15 @@ def check_signals():
             pair = signal["pair"]
             symbol = pair.replace("/", "-")
             price = fetch_realtime_price(pair)
-            direction = signal["direction"]
+            direction = signal["direction"].lower()
             entry_1 = signal["entry_1"]
             entry_2 = signal["entry_2"]
             sl = signal["stop_loss"]
             tps = signal["tp"]
             sent_time = datetime.fromisoformat(signal["sent_at"])
             status = signal.get("status", "open")
+            hit_tp = signal.get("hit_tp", [])
 
-            # Skip if already closed
             if status != "open":
                 updated_signals.append(signal)
                 continue
@@ -49,19 +60,41 @@ def check_signals():
                     updated_signals.append(signal)
                     continue
 
-            # Check SL hit
-            if (direction == "Long" and price <= sl) or (direction == "Short" and price >= sl):
+            # SL hit
+            if (direction == "long" and price <= sl) or (direction == "short" and price >= sl):
                 signal["status"] = "stopped"
                 send_message(f"🛑 <b>{pair}</b> đã hit Stop Loss ở {price:,.2f}")
                 updated_signals.append(signal)
                 continue
 
-            # Check TP hit
+            # Detect trend reversal (khung 4H)
+            try:
+                raw_candles = fetch_coin_data(pair, interval="4hour")
+                enriched = compute_indicators(raw_candles)
+                new_trend = classify_trend(enriched)
+
+                if (direction == "long" and new_trend == "downtrend") or (direction == "short" and new_trend == "uptrend"):
+                    signal["status"] = "reversed"
+                    send_message(f"↩️ <b>{pair}</b> đã đảo chiều xu hướng. Lệnh {direction.title()} bị huỷ.")
+                    updated_signals.append(signal)
+                    continue
+            except Exception as err:
+                print(f"⚠️ Không thể kiểm tra đảo chiều cho {pair}: {err}")
+
+            # Check TP levels
+            tp_hit = False
             for i, tp in enumerate(tps):
-                if (direction == "Long" and price >= tp) or (direction == "Short" and price <= tp):
-                    signal["status"] = f"tp{i+1}"
+                if i+1 in hit_tp:
+                    continue
+                if (direction == "long" and price >= tp) or (direction == "short" and price <= tp):
+                    hit_tp.append(i+1)
                     send_message(f"✅ <b>{pair}</b> đã đạt TP{i+1} ở {price:,.2f}")
-                    break
+                    tp_hit = True
+
+            if tp_hit:
+                signal["hit_tp"] = hit_tp
+                if len(hit_tp) == len(tps):
+                    signal["status"] = "closed"
 
             updated_signals.append(signal)
 
