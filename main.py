@@ -77,7 +77,7 @@ def run_block(block_name):
         print(f"❌ Block không hợp lệ: {block_name}")
         return
 
-    print(f"📦 Đang xử lý block: {block_name} với {len(symbols)} mã: {symbols}")
+    print(f"\n📦 Đang xử lý block: {block_name} với {len(symbols)} mã: {symbols}")
 
     try:
         print("📥 Fetching market data...")
@@ -125,14 +125,8 @@ def main():
     now = datetime.now(UTC)
     print(f"\n⏰ [UTC {now.strftime('%Y-%m-%d %H:%M:%S')}] Running scheduled scan...")
 
-    if len(sys.argv) == 2:
-        if sys.argv[1] == "all":
-            for blk in BLOCKS:
-                run_block(blk)
-        else:
-            run_block(sys.argv[1])
-    else:
-        print("❌ Thiếu tham số block. Dùng: python main.py block1 | block2 | block3 | all")
+    for blk in BLOCKS:
+        run_block(blk)
 
 if __name__ == "__main__":
     main()
