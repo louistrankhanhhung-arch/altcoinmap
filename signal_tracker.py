@@ -13,7 +13,10 @@ def load_active_signals():
     if not os.path.exists(ACTIVE_FILE):
         return []
     with open(ACTIVE_FILE, "r") as f:
-        return json.load(f)
+        content = f.read().strip()
+        if not content:
+            return []
+        return json.loads(content)
 
 # Save active signals
 def save_active_signals(signals):
