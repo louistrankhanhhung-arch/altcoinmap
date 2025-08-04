@@ -72,3 +72,10 @@ def parse_signal_response(reply):
     except Exception as e:
         print(f"❌ Error parsing GPT response: {e}")
         return None
+
+def is_safe_dca(trend_4h, trend_1d):
+    return (
+        (trend_4h == "downtrend" and trend_1d == "uptrend") or
+        (trend_4h == "sideways" and trend_1d == "uptrend") or
+        (trend_4h == "downtrend" and trend_1d == "sideways")
+    )
