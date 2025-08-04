@@ -1,11 +1,3 @@
-# utils.py
-
-def format_prompt_for_gpt(symbol, summary_lines):
-    header = f"Analyze {symbol} based on multi-timeframe data:\n"
-    body = "\n".join(summary_lines)
-    return header + body
-
-
 def parse_signal_response(reply):
     try:
         lines = reply.strip().splitlines()
@@ -16,16 +8,31 @@ def parse_signal_response(reply):
                 continue
             key, val = line.split(":", 1)
             key = key.strip().lower().replace(" ", "_")
-            val = val.strip()
+            val = val.strip().strip('"').strip("'")
+
+            # Parse các trường số
             if key in ["entry_1", "entry_2", "stop_loss"]:
-                result[key] = float(val.replace(",", ""))
+                try:
+                    result[key] = float(val.replace(",", ""))
+                except:
+                    pass
             elif key.startswith("tp"):
-                if "tp" not in result:
-                    result["tp"] = []
-                result["tp"].append(float(val.replace(",", "")))
-            elif key == "direction":
+                try:
+                    if "tp" not in result:
+                        result["tp"] = []
+                    result["tp"].append(float(val.replace(",", "")))
+                except:
+                    pass
+            else:
                 result[key] = val
-        return result if "entry_1" in result else None
+
+        # Kiểm tra bắt buộc tối thiểu
+        required_fields = ["entry_1", "stop_loss", "tp"]
+        for field in required_fields:
+            if field not in result or not result[field]:
+                return None
+
+        return result
     except Exception as e:
         print(f"❌ Error parsing GPT response: {e}")
         return None
