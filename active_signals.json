@@ -1,0 +1,25 @@
+[
+  {
+    "pair": "BTC/USDT",
+    "direction": "Long",
+    "entry_1": 29500.0,
+    "entry_2": 29250.0,
+    "stop_loss": 28800.0,
+    "tp": [
+      29800.0,
+      30000.0,
+      30500.0,
+      31000.0,
+      31500.0
+    ],
+    "strategy_type": "scale-in",
+    "leverage": "x5",
+    "confidence": "medium",
+    "assessment": "Xu h\u01b0\u1edbng t\u0103ng \u1ed5n \u0111\u1ecbnh, gi\u00e1 \u0111ang test v\u00f9ng h\u1ed7 tr\u1ee3 MA20.",
+    "risk_level": "moderate",
+    "key_watch": "RSI v\u00e0 n\u1ebfn bullish engulfing",
+    "sent_at": "2025-08-04T14:47:55.926860+00:00",
+    "status": "open",
+    "hit_tp": []
+  }
+]
