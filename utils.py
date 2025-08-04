@@ -4,7 +4,13 @@ def parse_signal_response(reply):
     try:
         # Nếu GPT trả về dạng JSON đúng, parse trực tiếp
         try:
-            data = json.loads(reply.strip().strip("` "))
+            raw = reply.strip()
+            if raw.startswith("```json"):
+                raw = raw[7:]  # cắt bỏ "```json\n"
+            if raw.endswith("```"):
+                raw = raw[:-3]  # cắt bỏ "```"
+            data = json.loads(raw.strip())
+
             # Đổi key thành dạng thống nhất
             result = {k.strip().lower().replace(" ", "_"): v for k, v in data.items()}
 
