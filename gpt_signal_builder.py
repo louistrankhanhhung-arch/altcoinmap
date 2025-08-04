@@ -109,14 +109,14 @@ Chỉ trả về dữ liệu JSON.
                         tps = r4h[:2] + r1d[:3]
                         while len(tps) < 5:
                             tps.append(round(entry_1 * (1 + 0.01 * (len(tps) + 1)), 2))
-                        p["tp"] = tps[:5]
+                        p["tp"] = sorted(tps[:5]) if direction == "long" else sorted(tps[:5], reverse=True)
                     elif direction == "short":
                         s4h = sorted([price for _, price, typ in sr_4h if typ == "support" and price < entry_1], reverse=True)
                         s1d = sorted([price for _, price, typ in sr_1d if typ == "support" and price < entry_1], reverse=True)
                         tps = s4h[:2] + s1d[:3]
                         while len(tps) < 5:
                             tps.append(round(entry_1 * (1 - 0.01 * (len(tps) + 1)), 2))
-                        p["tp"] = tps[:5]
+                        p["tp"] = sorted(tps[:5]) if direction == "long" else sorted(tps[:5], reverse=True)
 
                     tp = p["tp"]
                     tp_range_ok = abs(float(tp[-1]) - entry_1) / entry_1 >= 0.01
