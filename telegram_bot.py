@@ -69,7 +69,8 @@ def format_message(s):
         pair = s['pair']
         base_symbol = pair.split("/")[0]
         return f"""<b>{pair} | {s.get('direction', '?').upper()}</b>
-🎯 <b>Entry:</b> {format_price(s['entry_1'], base_symbol)} / {format_price(s['entry_2'], base_symbol)}
+🎯 <b>Entry 1:</b> {format_price(s['entry_1'], base_symbol)}
+🎯 <b>Entry 2:</b> {format_price(s['entry_2'], base_symbol)}
 📉 <b>SL:</b> {format_price(s['stop_loss'], base_symbol)}
 💰 <b>TPs:</b> {', '.join(format_price(p, base_symbol) for p in s['tp'])}
 🧠 <b>Assessment:</b> {s.get('assessment', 'Không có đánh giá')}
