@@ -84,10 +84,12 @@ def run_block(block_name):
     try:
         print("📥 Fetching market data...")
         data_by_symbol = {}
+        raw_data_by_symbol = {}
         for symbol in symbols:
             raw_data = {
                 tf: fetch_coin_data(symbol, interval=TF_MAP[tf]) for tf in TF_MAP
             }
+            raw_data_by_symbol[symbol] = raw_data
             enriched = {}
             for tf in raw_data:
                 candles = compute_indicators(raw_data[tf])
@@ -109,17 +111,19 @@ def run_block(block_name):
         for sig in signals:
             sym = sig["pair"]
             tf_data = data_by_symbol.get(sym, {}).get("4H", {})
+            raw_4h = raw_data_by_symbol.get(sym, {}).get("4H", [])
+
             direction = sig["direction"]
             entry_1 = sig["entry_1"]
             bb_lower = tf_data.get("bb_lower")
             bb_upper = tf_data.get("bb_upper")
-            swing_low = min([c["low"] for c in raw_data["4H"][-5:]]) if "4H" in raw_data else None
-            swing_high = max([c["high"] for c in raw_data["4H"][-5:]]) if "4H" in raw_data else None
-            sig["stop_loss"] = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high)
+            swing_low = min([c["low"] for c in raw_4h[-5:]]) if raw_4h else None
+            swing_high = max([c["high"] for c in raw_4h[-5:]]) if raw_4h else None
+            atr_val = tf_data.get("atr")
 
+            sig["stop_loss"] = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val)
             sig["strategy_type"] = label_strategy_type(sig)
 
-            # Gửi từng signal và lưu message_id
             from telegram_bot import format_message
             text = format_message(sig)
             message_id = send_message(text)
