@@ -119,30 +119,31 @@ def run_block(block_name):
             rsi = tf_data.get("rsi")
             sr_levels = tf_data.get("sr_levels", [])
 
-            entry_1, entry_2 = generate_entries(current_price, atr_val, direction, ma20, rsi, sr_levels)
-            sig["entry_1"] = entry_1
-            sig["entry_2"] = entry_2
+            if direction and current_price and atr_val:
+                entry_1, entry_2 = generate_entries(current_price, atr_val, direction, ma20, rsi, sr_levels)
+                sig["entry_1"] = entry_1
+                sig["entry_2"] = entry_2
 
-            bb_lower = tf_data.get("bb_lower")
-            bb_upper = tf_data.get("bb_upper")
-            swing_low = min([c["low"] for c in raw_4h[-5:]]) if raw_4h else None
-            swing_high = max([c["high"] for c in raw_4h[-5:]]) if raw_4h else None
+                bb_lower = tf_data.get("bb_lower")
+                bb_upper = tf_data.get("bb_upper")
+                swing_low = min([c["low"] for c in raw_4h[-5:]]) if raw_4h else None
+                swing_high = max([c["high"] for c in raw_4h[-5:]]) if raw_4h else None
 
-            stop_loss = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2)
-            sig["stop_loss"] = stop_loss
+                stop_loss = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2)
+                sig["stop_loss"] = stop_loss
 
-            supports = [lvl for _, lvl, t in sr_levels if t == "support"]
-            resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
-            trend_strength = tf_data.get("trend", "moderate")
-            confidence = sig.get("confidence", "medium")
-            sig["take_profits"] = generate_take_profits(direction, entry_1, stop_loss, supports, resistances, trend_strength, confidence)
+                supports = [lvl for _, lvl, t in sr_levels if t == "support"]
+                resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
+                trend_strength = tf_data.get("trend", "moderate")
+                confidence = sig.get("confidence", "medium")
+                sig["take_profits"] = generate_take_profits(direction, entry_1, stop_loss, supports, resistances, trend_strength, confidence)
 
-            sig["strategy_type"] = label_strategy_type(sig)
+                sig["strategy_type"] = label_strategy_type(sig)
 
-            from telegram_bot import format_message
-            text = format_message(sig)
-            message_id = send_message(text)
-            sig["message_id"] = message_id
+                from telegram_bot import format_message
+                text = format_message(sig)
+                message_id = send_message(text)
+                sig["message_id"] = message_id
 
         save_signals(signals, all_symbols, data_by_symbol)
         save_active_signals(signals)
