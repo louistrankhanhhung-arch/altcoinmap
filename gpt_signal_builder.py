@@ -2,7 +2,7 @@ import os
 import openai
 from datetime import datetime, UTC
 from utils import parse_signal_response
-from indicators import generate_take_profits, generate_stop_loss, generate_entries
+from indicators import generate_stop_loss, generate_entries
 
 # Gửi từng coin một với prompt có định dạng từ PROMPT_TEMPLATE
 async def get_gpt_signals(data_by_symbol):
@@ -67,7 +67,7 @@ Chỉ trả về dữ liệu JSON.
 
                 parsed["pair"] = symbol
 
-                # Lấy các thông số kỹ thuật để tự động tính SL/TP nếu cần
+                # Lấy các thông số kỹ thuật để tự động tính SL nếu cần
                 direction = parsed.get("direction")
                 tf_4h = tf_data.get("4H", {})
                 entry_1 = parsed.get("entry_1")
@@ -86,13 +86,6 @@ Chỉ trả về dữ liệu JSON.
                     parsed["entry_2"] = entry_2
 
                     parsed["stop_loss"] = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2)
-
-                    supports = [lvl for _, lvl, t in sr_levels if t == "support"]
-                    resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
-                    trend_strength = tf_4h.get("trend", "moderate")
-                    confidence = parsed.get("confidence", "medium")
-
-                    parsed["take_profits"] = generate_take_profits(direction, entry_1, parsed["stop_loss"], supports, resistances, trend_strength, confidence)
 
                 results[symbol] = parsed
 
