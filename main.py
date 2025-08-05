@@ -120,6 +120,12 @@ def run_block(block_name):
             sr_levels = tf_data.get("sr_levels", [])
 
             if direction and current_price and atr_val:
+                # ✅ Bổ sung kiểm tra lệch hướng trend
+                trend = tf_data.get("trend")
+                if (direction == "long" and trend == "downtrend") or (direction == "short" and trend == "uptrend"):
+                    print(f"⚠️ GPT chọn {direction.upper()} khi trend 4H là {trend} -> BỎ QUA {sym}")
+                    continue
+
                 entry_1, entry_2 = generate_entries(current_price, atr_val, direction, ma20, rsi, sr_levels)
                 sig["entry_1"] = entry_1
                 sig["entry_2"] = entry_2
