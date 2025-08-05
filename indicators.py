@@ -116,7 +116,33 @@ def classify_trend(candles):
             return "sideways"
     return "unknown"
 
+
 def generate_entries(price, atr_val, direction="long", ma20=None, rsi=None, sr_levels=[]):
+    nearest_supports = sorted([lvl for _, lvl, typ in sr_levels if typ == 'support'], reverse=True)
+    nearest_resistances = sorted([lvl for _, lvl, typ in sr_levels if typ == 'resistance'])
+
+    entry_1 = price
+    if direction == "long":
+        for lvl in nearest_supports:
+            if lvl < price:
+                entry_1 = lvl
+                break
+    else:
+        for lvl in nearest_resistances:
+            if lvl > price:
+                entry_1 = lvl
+                break
+
+    if not entry_1:
+        entry_1 = round(price, 2)
+
+    if direction == "long":
+        entry_2 = entry_1 - min(1.5 * atr_val, 0.02 * entry_1)
+    else:
+        entry_2 = entry_1 + min(1.5 * atr_val, 0.02 * entry_1)
+
+    return round(entry_1, 4), round(entry_2, 4)
+
     entry_1 = round(price, 2)
     entry_2 = price
     if atr_val:
