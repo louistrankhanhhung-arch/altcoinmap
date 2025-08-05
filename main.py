@@ -131,9 +131,12 @@ def run_block(block_name):
             entry_1 = sig.get("entry_1")
             entry_2 = sig.get("entry_2")
 
-            # Kiểm tra entry lệch quá 10% -> loại bỏ
-            if not entry_1 or not entry_2:
-                print(f"⚠️ Không có entry từ GPT cho {sym} -> BỎ QUA")
+            # Kiểm tra entry lệch quá 10% tùy theo hướng giao dịch -> loại bỏ
+            if direction.lower() == "long" and entry_1 > current_price * 1.1:
+                print(f"⚠️ Entry LONG quá xa giá hiện tại ({current_price}) -> BỎ QUA {sym}")
+                continue
+            elif direction.lower() == "short" and entry_1 < current_price * 0.9:
+                print(f"⚠️ Entry SHORT quá xa giá hiện tại ({current_price}) -> BỎ QUA {sym}")
                 continue
 
             if abs(entry_1 - current_price) / current_price > 0.1:
