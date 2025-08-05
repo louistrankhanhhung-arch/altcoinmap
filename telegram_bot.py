@@ -10,8 +10,7 @@ def send_signals(signals):
         return
 
     if not signals:
-        send_message("⚠️ Không có tín hiệu đủ mạnh ở thời điểm này.")
-        return
+        return  # Không gửi thông báo nếu không có tín hiệu mạnh
 
     if isinstance(signals, list):
         for s in signals:
@@ -32,6 +31,7 @@ def send_message(text):
         "text": text,
         "parse_mode": "HTML"
     }
+    print(f"🔔 [SEND] {text[:80]}..." if len(text) > 80 else f"🔔 [SEND] {text}")
     try:
         response = requests.post(url, json=data, timeout=10)
         if response.status_code != 200:
