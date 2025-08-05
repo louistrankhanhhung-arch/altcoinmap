@@ -2,6 +2,7 @@ import os
 import openai
 from datetime import datetime, UTC
 from utils import parse_signal_response
+from indicators import generate_take_profits
 
 # Gửi từng coin một với prompt có định dạng từ PROMPT_TEMPLATE
 async def get_gpt_signals(data_by_symbol):
@@ -99,24 +100,14 @@ Chỉ trả về dữ liệu JSON.
                     elif strategy_type == "DCA":
                         p["entry_2"] = round(entry_1 * (1 - spread_pct), 2) if direction == "long" else round(entry_1 * (1 + spread_pct), 2)
 
-                    # Sử dụng SR levels để tính TP chia theo cấp độ
                     sr_4h = tf_data.get("4H", {}).get("sr_levels", [])
-                    sr_1d = tf_data.get("1D", {}).get("sr_levels", [])
+                    supports_4h = [price for _, price, typ in sr_4h if typ == "support"]
+                    resistances_4h = [price for _, price, typ in sr_4h if typ == "resistance"]
 
-                    if direction == "long":
-                        r4h = sorted([price for _, price, typ in sr_4h if typ == "resistance" and price > entry_1])
-                        r1d = sorted([price for _, price, typ in sr_1d if typ == "resistance" and price > entry_1])
-                        tps = r4h[:2] + r1d[:3]
-                        while len(tps) < 5:
-                            tps.append(round(entry_1 * (1 + 0.01 * (len(tps) + 1)), 2))
-                        p["tp"] = sorted(tps[:5]) if direction == "long" else sorted(tps[:5], reverse=True)
-                    elif direction == "short":
-                        s4h = sorted([price for _, price, typ in sr_4h if typ == "support" and price < entry_1], reverse=True)
-                        s1d = sorted([price for _, price, typ in sr_1d if typ == "support" and price < entry_1], reverse=True)
-                        tps = s4h[:2] + s1d[:3]
-                        while len(tps) < 5:
-                            tps.append(round(entry_1 * (1 - 0.01 * (len(tps) + 1)), 2))
-                        p["tp"] = sorted(tps[:5]) if direction == "long" else sorted(tps[:5], reverse=True)
+                    # Đặt TP mới linh hoạt
+                    trend_strength = "strong" if trend_1h == trend_4h == trend_1d else "moderate"
+                    tps = generate_take_profits(direction, entry_1, sl, supports_4h, resistances_4h, trend_strength, p.get("confidence", "medium"))
+                    p["tp"] = tps
 
                     tp = p["tp"]
                     tp_range_ok = abs(float(tp[-1]) - entry_1) / entry_1 >= 0.01
