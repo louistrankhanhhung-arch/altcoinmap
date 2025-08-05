@@ -142,3 +142,20 @@ def generate_entries(price, atr_val, direction="long", ma20=None, rsi=None, sr_l
         entry_2 = price * 0.99 if direction == "long" else price * 1.01
 
     return round(entry_1, 2), round(entry_2, 2)
+
+def generate_take_profits(direction, entry_1, stop_loss, supports, resistances, trend_strength="moderate", confidence="medium"):
+    tps = []
+    rr_min = 1.2
+    if direction == "long":
+        base_tp = entry_1 + (entry_1 - stop_loss) * rr_min
+        levels = sorted([lvl for lvl in resistances if lvl > entry_1])
+        if base_tp not in levels:
+            levels.insert(0, round(base_tp, 2))
+        tps = levels[:5]
+    else:
+        base_tp = entry_1 - (stop_loss - entry_1) * rr_min
+        levels = sorted([lvl for lvl in supports if lvl < entry_1], reverse=True)
+        if base_tp not in levels:
+            levels.insert(0, round(base_tp, 2))
+        tps = levels[:5]
+    return tps
