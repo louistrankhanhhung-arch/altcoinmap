@@ -8,7 +8,6 @@ from kucoin_api import fetch_coin_data
 
 ACTIVE_FILE = "active_signals.json"
 
-# Load active signals
 def load_active_signals():
     if not os.path.exists(ACTIVE_FILE):
         return []
@@ -18,12 +17,10 @@ def load_active_signals():
             return []
         return json.loads(content)
 
-# Save active signals
 def save_active_signals(signals):
     with open(ACTIVE_FILE, "w") as f:
         json.dump(signals, f, indent=2)
 
-# Check if a signal is duplicated (same pair + direction is open)
 def is_duplicate_signal(new_sig):
     active = load_active_signals()
     for sig in active:
@@ -50,48 +47,44 @@ def check_signals():
             sent_time = datetime.fromisoformat(signal["sent_at"])
             status = signal.get("status", "open")
             hit_tp = signal.get("hit_tp", [])
+            message_id = signal.get("message_id")
 
             if status != "open":
                 updated_signals.append(signal)
                 continue
 
-            # Timeout if >12h and price never entered
             if now - sent_time > timedelta(hours=12):
                 if not (min(entry_1, entry_2) <= price <= max(entry_1, entry_2)):
                     signal["status"] = "timeout"
-                    send_message(f"⚠️ <b>{pair}</b> đã timeout sau 12 giờ không vào lệnh.")
+                    send_message(f"⚠️ <b>{pair}</b> đã timeout sau 12 giờ không vào lệnh.", reply_to_id=message_id)
                     updated_signals.append(signal)
                     continue
 
-            # SL hit
             if (direction == "long" and price <= sl) or (direction == "short" and price >= sl):
                 signal["status"] = "stopped"
-                send_message(f"🛑 <b>{pair}</b> đã hit Stop Loss ở {price:,.2f}")
+                send_message(f"🛑 <b>{pair}</b> đã hit Stop Loss ở {price:,.2f}", reply_to_id=message_id)
                 updated_signals.append(signal)
                 continue
 
-            # Detect trend reversal (khung 4H)
             try:
                 raw_candles = fetch_coin_data(pair, interval="4hour")
                 enriched = compute_indicators(raw_candles)
                 new_trend = classify_trend(enriched)
-
                 if (direction == "long" and new_trend == "downtrend") or (direction == "short" and new_trend == "uptrend"):
                     signal["status"] = "reversed"
-                    send_message(f"↩️ <b>{pair}</b> đã đảo chiều xu hướng. Lệnh {direction.title()} bị huỷ.")
+                    send_message(f"↩️ <b>{pair}</b> đã đảo chiều xu hướng. Lệnh {direction.title()} bị huỷ.", reply_to_id=message_id)
                     updated_signals.append(signal)
                     continue
             except Exception as err:
                 print(f"⚠️ Không thể kiểm tra đảo chiều cho {pair}: {err}")
 
-            # Check TP levels
             tp_hit = False
             for i, tp in enumerate(tps):
                 if i+1 in hit_tp:
                     continue
                 if (direction == "long" and price >= tp) or (direction == "short" and price <= tp):
                     hit_tp.append(i+1)
-                    send_message(f"✅ <b>{pair}</b> đã đạt TP{i+1} ở {price:,.2f}")
+                    send_message(f"✅ <b>{pair}</b> đã đạt TP{i+1} ở {price:,.2f}", reply_to_id=message_id)
                     tp_hit = True
 
             if tp_hit:
