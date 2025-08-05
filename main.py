@@ -7,9 +7,8 @@ from gpt_signal_builder import get_gpt_signals, BLOCKS
 from kucoin_api import fetch_coin_data
 from telegram_bot import send_message
 from signal_logger import save_signals
-from indicators import compute_indicators
+from indicators import compute_indicators, generate_stop_loss, generate_entries
 from signal_tracker import is_duplicate_signal
-from indicators import generate_stop_loss
 
 ACTIVE_FILE = "active_signals.json"
 
@@ -114,14 +113,22 @@ def run_block(block_name):
             raw_4h = raw_data_by_symbol.get(sym, {}).get("4H", [])
 
             direction = sig["direction"]
-            entry_1 = sig["entry_1"]
+            current_price = tf_data.get("close")
+            atr_val = tf_data.get("atr")
+            ma20 = tf_data.get("ma20")
+            rsi = tf_data.get("rsi")
+            sr_levels = tf_data.get("sr_levels", [])
+
+            entry_1, entry_2 = generate_entries(current_price, atr_val, direction, ma20, rsi, sr_levels)
+            sig["entry_1"] = entry_1
+            sig["entry_2"] = entry_2
+
             bb_lower = tf_data.get("bb_lower")
             bb_upper = tf_data.get("bb_upper")
             swing_low = min([c["low"] for c in raw_4h[-5:]]) if raw_4h else None
             swing_high = max([c["high"] for c in raw_4h[-5:]]) if raw_4h else None
-            atr_val = tf_data.get("atr")
 
-            sig["stop_loss"] = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val)
+            sig["stop_loss"] = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2)
             sig["strategy_type"] = label_strategy_type(sig)
 
             from telegram_bot import format_message
