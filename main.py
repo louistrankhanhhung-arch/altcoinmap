@@ -9,6 +9,7 @@ from telegram_bot import send_signals
 from signal_logger import save_signals
 from indicators import compute_indicators
 from signal_tracker import is_duplicate_signal
+from indicators import generate_stop_loss
 
 ACTIVE_FILE = "active_signals.json"
 
@@ -106,6 +107,16 @@ def run_block(block_name):
         all_symbols = list(data_by_symbol.keys())
 
         for sig in signals:
+            sym = sig["pair"]
+            tf_data = data_by_symbol.get(sym, {}).get("4H", {})
+            direction = sig["direction"]
+            entry_1 = sig["entry_1"]
+            bb_lower = tf_data.get("bb_lower")
+            bb_upper = tf_data.get("bb_upper")
+            swing_low = min([c["low"] for c in raw_data["4H"][-5:]]) if "4H" in raw_data else None
+            swing_high = max([c["high"] for c in raw_data["4H"][-5:]]) if "4H" in raw_data else None
+            sig["stop_loss"] = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high)
+
             sig["strategy_type"] = label_strategy_type(sig)
 
         save_signals(signals, all_symbols, data_by_symbol)
@@ -114,9 +125,6 @@ def run_block(block_name):
         if signals:
             print(f"✅ {len(signals)} signal(s) found in {block_name}. Sending to Telegram...")
             send_signals(signals)
-        else:
-            print(f"⚠️ No strong signals detected in {block_name}. Sending announcement...")
-            send_signals([])
 
     except Exception as e:
         print(f"❌ Main error in {block_name}: {e}")
