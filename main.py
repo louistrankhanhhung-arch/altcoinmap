@@ -7,7 +7,7 @@ from gpt_signal_builder import get_gpt_signals, BLOCKS
 from kucoin_api import fetch_coin_data
 from telegram_bot import send_message
 from signal_logger import save_signals
-from indicators import compute_indicators, generate_stop_loss, generate_entries
+from indicators import compute_indicators, generate_stop_loss, generate_entries, generate_take_profits
 from signal_tracker import is_duplicate_signal
 
 ACTIVE_FILE = "active_signals.json"
@@ -128,7 +128,15 @@ def run_block(block_name):
             swing_low = min([c["low"] for c in raw_4h[-5:]]) if raw_4h else None
             swing_high = max([c["high"] for c in raw_4h[-5:]]) if raw_4h else None
 
-            sig["stop_loss"] = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2)
+            stop_loss = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2)
+            sig["stop_loss"] = stop_loss
+
+            supports = [lvl for _, lvl, t in sr_levels if t == "support"]
+            resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
+            trend_strength = tf_data.get("trend", "moderate")
+            confidence = sig.get("confidence", "medium")
+            sig["take_profits"] = generate_take_profits(direction, entry_1, stop_loss, supports, resistances, trend_strength, confidence)
+
             sig["strategy_type"] = label_strategy_type(sig)
 
             from telegram_bot import format_message
