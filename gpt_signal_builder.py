@@ -21,11 +21,18 @@ async def get_gpt_signals(data_by_symbol):
                             f"[{tf}] Trend: {item.get('trend')}, RSI: {item.get('rsi')}, MA20: {item.get('ma20')}, MA50: {item.get('ma50')}, Candle: {item.get('candle_signal')}, BB: ({item.get('bb_lower')}, {item.get('bb_upper')})"
                         )
 
+                current_price = tf_data.get("4H", {}).get("close", "N/A")
+                trend_4h = tf_data.get("4H", {}).get("trend", "unknown")
+                trend_1d = tf_data.get("1D", {}).get("trend", "unknown")
+
                 prompt = f"""
 Bạn là một trợ lý giao dịch crypto chuyên nghiệp.
 Dưới đây là dữ liệu kỹ thuật của {symbol} theo từng khung thời gian:
 
 {chr(10).join(summary_lines)}
+
+Giá hiện tại: {current_price}
+Xu hướng 4H: {trend_4h}, xu hướng 1D: {trend_1d}
 
 Hãy đánh giá xem có cơ hội giao dịch không dựa trên xu hướng (Trend), lực nến, RSI, MA, Bollinger Bands.
 Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau, ưu tiên đúng kỹ thuật và thực tế thị trường:
