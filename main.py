@@ -147,10 +147,10 @@ def run_block(block_name):
                 entry_1 = sig.get("entry_1")
                 entry_2 = sig.get("entry_2")
 
+                # Nếu thiếu entry thì bỏ qua luôn, không generate lại
                 if not entry_1 or not entry_2:
-                    entry_1, entry_2 = generate_entries(current_price, atr_val, direction, ma20, rsi, sr_levels)
-                    sig["entry_1"] = entry_1
-                    sig["entry_2"] = entry_2
+                    print(f"⚠️ Không có entry từ GPT cho {sym} -> BỎ QUA")
+                    continue
 
                 bb_lower = tf_data.get("bb_lower")
                 bb_upper = tf_data.get("bb_upper")
