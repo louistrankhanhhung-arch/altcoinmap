@@ -5,7 +5,7 @@ import asyncio
 from datetime import datetime, UTC
 from gpt_signal_builder import get_gpt_signals, BLOCKS
 from kucoin_api import fetch_coin_data
-from telegram_bot import send_signals
+from telegram_bot import send_message
 from signal_logger import save_signals
 from indicators import compute_indicators
 from signal_tracker import is_duplicate_signal
@@ -119,17 +119,19 @@ def run_block(block_name):
 
             sig["strategy_type"] = label_strategy_type(sig)
 
+            # Gửi từng signal và lưu message_id
+            from telegram_bot import format_message
+            text = format_message(sig)
+            message_id = send_message(text)
+            sig["message_id"] = message_id
+
         save_signals(signals, all_symbols, data_by_symbol)
         save_active_signals(signals)
-
-        if signals:
-            print(f"✅ {len(signals)} signal(s) found in {block_name}. Sending to Telegram...")
-            send_signals(signals)
 
     except Exception as e:
         print(f"❌ Main error in {block_name}: {e}")
         traceback.print_exc()
-        send_signals([f"⚠️ Lỗi khi chạy hệ thống với {block_name}: {str(e)}"])
+        send_message(f"⚠️ Lỗi khi chạy hệ thống với {block_name}: {str(e)}")
 
 def main():
     now = datetime.now(UTC)
