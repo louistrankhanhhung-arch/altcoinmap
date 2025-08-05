@@ -42,6 +42,24 @@ def bollinger_bands(values, period=20):
         bands.append((lower, mean, upper))
     return bands
 
+def atr(candles, period=14):
+    trs = []
+    for i in range(1, len(candles)):
+        high = candles[i]['high']
+        low = candles[i]['low']
+        prev_close = candles[i - 1]['close']
+        tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
+        trs.append(tr)
+    if len(trs) < period:
+        return [None] * len(candles)
+    atr_vals = [None] * (period - 1)
+    atr_vals.append(np.mean(trs[:period]))
+    for i in range(period, len(trs)):
+        prev_atr = atr_vals[-1]
+        new_atr = (prev_atr * (period - 1) + trs[i]) / period
+        atr_vals.append(new_atr)
+    return [None] + atr_vals  # align with candles
+
 def detect_support_resistance(candles, window=20, tolerance=0.005):
     prices = [c["close"] for c in candles]
     levels = []
@@ -69,12 +87,14 @@ def compute_indicators(candles):
     ma20_vals = sma(closes, 20)
     ma50_vals = sma(closes, 50)
     bb_vals = bollinger_bands(closes, 20)
+    atr_vals = atr(candles)
 
     for i in range(len(candles)):
         candles[i]['rsi'] = rsi_vals[i]
         candles[i]['ma20'] = ma20_vals[i]
         candles[i]['ma50'] = ma50_vals[i]
         candles[i]['bb_lower'], candles[i]['bb_mid'], candles[i]['bb_upper'] = bb_vals[i]
+        candles[i]['atr'] = atr_vals[i]
 
     candles[-1]["sr_levels"] = detect_support_resistance(candles)
 
@@ -124,11 +144,16 @@ def generate_take_profits(direction, entry_1, stop_loss, supports, resistances, 
     tps = sorted(tps) if direction == "long" else sorted(tps, reverse=True)
     return tps[:5]
 
-def generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high):
+def generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val=None):
+    sl = None
     if direction == "long":
         candidates = [val for val in [bb_lower, swing_low] if val is not None and val < entry_1]
-        return round(min(candidates), 2) if candidates else round(entry_1 * 0.98, 2)
+        sl = min(candidates) if candidates else entry_1 * 0.98
+        if atr_val:
+            sl = min(sl, entry_1 - 1.5 * atr_val)
     elif direction == "short":
         candidates = [val for val in [bb_upper, swing_high] if val is not None and val > entry_1]
-        return round(max(candidates), 2) if candidates else round(entry_1 * 1.02, 2)
-    return round(entry_1 * 0.99, 2)
+        sl = max(candidates) if candidates else entry_1 * 1.02
+        if atr_val:
+            sl = max(sl, entry_1 + 1.5 * atr_val)
+    return round(sl, 2) if sl else round(entry_1 * 0.99, 2)
