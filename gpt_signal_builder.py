@@ -2,7 +2,7 @@ import os
 import openai
 from datetime import datetime, UTC
 from utils import parse_signal_response
-from indicators import generate_take_profits, generate_stop_loss
+from indicators import generate_take_profits, generate_stop_loss, generate_entries
 
 # Gửi từng coin một với prompt có định dạng từ PROMPT_TEMPLATE
 async def get_gpt_signals(data_by_symbol):
@@ -67,17 +67,32 @@ Chỉ trả về dữ liệu JSON.
 
                 parsed["pair"] = symbol
 
-                # Lấy các thông số kỹ thuật để tự động tính SL nếu cần
+                # Lấy các thông số kỹ thuật để tự động tính SL/TP nếu cần
                 direction = parsed.get("direction")
+                tf_4h = tf_data.get("4H", {})
                 entry_1 = parsed.get("entry_1")
-                bb_lower = tf_data.get("4H", {}).get("bb_lower")
-                bb_upper = tf_data.get("4H", {}).get("bb_upper")
-                swing_low = tf_data.get("4H", {}).get("low")
-                swing_high = tf_data.get("4H", {}).get("high")
-                atr_val = tf_data.get("4H", {}).get("atr")
+                bb_lower = tf_4h.get("bb_lower")
+                bb_upper = tf_4h.get("bb_upper")
+                swing_low = tf_4h.get("low")
+                swing_high = tf_4h.get("high")
+                atr_val = tf_4h.get("atr")
+                ma20 = tf_4h.get("ma20")
+                rsi = tf_4h.get("rsi")
+                sr_levels = tf_4h.get("sr_levels")
 
-                if direction and entry_1:
-                    parsed["stop_loss"] = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val)
+                if direction and atr_val and ma20 and rsi and sr_levels:
+                    entry_1, entry_2 = generate_entries(tf_4h.get("close"), atr_val, direction, ma20, rsi, sr_levels)
+                    parsed["entry_1"] = entry_1
+                    parsed["entry_2"] = entry_2
+
+                    parsed["stop_loss"] = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2)
+
+                    supports = [lvl for _, lvl, t in sr_levels if t == "support"]
+                    resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
+                    trend_strength = tf_4h.get("trend", "moderate")
+                    confidence = parsed.get("confidence", "medium")
+
+                    parsed["take_profits"] = generate_take_profits(direction, entry_1, parsed["stop_loss"], supports, resistances, trend_strength, confidence)
 
                 results[symbol] = parsed
 
