@@ -132,7 +132,11 @@ def run_block(block_name):
             entry_2 = sig.get("entry_2")
 
             # Kiểm tra entry lệch quá 10% -> loại bỏ
-            if entry_1 and abs(entry_1 - current_price) / current_price > 0.1:
+            if not entry_1 or not entry_2:
+                print(f"⚠️ Không có entry từ GPT cho {sym} -> BỎ QUA")
+                continue
+
+            if abs(entry_1 - current_price) / current_price > 0.1:
                 print(f"⚠️ Entry 1 lệch quá xa giá hiện tại ({current_price}) -> BỎ QUA {sym}")
                 continue
 
@@ -147,7 +151,8 @@ def run_block(block_name):
 
             stop_loss = sig.get("stop_loss")
             if not stop_loss:
-                stop_loss = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2)
+                print(f"⚠️ Không có Stop Loss từ GPT cho {sym} -> BỎ QUA")
+                continue
             sig["stop_loss"] = float(stop_loss)
 
             rr_ratio = abs(entry_1 - stop_loss)
