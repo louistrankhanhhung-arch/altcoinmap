@@ -108,77 +108,65 @@ def run_block(block_name):
         all_symbols = list(data_by_symbol.keys())
 
         for sig in signals:
-            # Chuẩn hóa key nếu GPT trả về sai định dạng (chữ hoa, dấu cách...)
-            if "entry_1" not in sig:
-                for k in ["Entry 1", "Entry_1"]:
-                    if k in sig:
-                        sig["entry_1"] = float(sig[k])
-                        break
+            for k in ["Entry 1", "Entry_1"]:
+                if k in sig: sig["entry_1"] = float(sig[k])
+            for k in ["Entry 2", "Entry_2"]:
+                if k in sig: sig["entry_2"] = float(sig[k])
+            for k in ["Stop Loss", "Stop_Loss"]:
+                if k in sig: sig["stop_loss"] = float(sig[k])
 
-            if "entry_2" not in sig:
-                for k in ["Entry 2", "Entry_2"]:
-                    if k in sig:
-                        sig["entry_2"] = float(sig[k])
-                        break
-
-            if "stop_loss" not in sig:
-                for k in ["Stop Loss", "Stop_Loss"]:
-                    if k in sig:
-                        sig["stop_loss"] = float(sig[k])
-                        break
-
-            sym = sig["pair"]
+            sym = sig.get("pair") or sig.get("symbol")
             tf_data = data_by_symbol.get(sym, {}).get("4H", {})
             raw_4h = raw_data_by_symbol.get(sym, {}).get("4H", [])
 
-            direction = sig["direction"]
+            direction = sig.get("direction")
             current_price = tf_data.get("close")
             atr_val = tf_data.get("atr")
-            ma20 = tf_data.get("ma20")
-            rsi = tf_data.get("rsi")
             sr_levels = tf_data.get("sr_levels", [])
 
-            if direction and current_price and atr_val:
-                trend = tf_data.get("trend")
-                if (direction == "long" and trend == "downtrend") or (direction == "short" and trend == "uptrend"):
-                    print(f"⚠️ GPT chọn {direction.upper()} khi trend 4H là {trend} -> BỎ QUA {sym}")
-                    continue
+            if not all([direction, current_price, atr_val]):
+                print(f"⚠️ Thiếu dữ liệu cho {sym} -> BỎ QUA")
+                continue
 
-                entry_1 = sig.get("entry_1")
-                entry_2 = sig.get("entry_2")
+            entry_1 = sig.get("entry_1")
+            entry_2 = sig.get("entry_2")
 
-                # Nếu thiếu entry thì bỏ qua luôn, không generate lại
-                if not entry_1 or not entry_2:
-                    print(f"⚠️ Không có entry từ GPT cho {sym} -> BỎ QUA")
-                    continue
+            # Kiểm tra entry lệch quá 10% -> loại bỏ
+            if entry_1 and abs(entry_1 - current_price) / current_price > 0.1:
+                print(f"⚠️ Entry 1 lệch quá xa giá hiện tại ({current_price}) -> BỎ QUA {sym}")
+                continue
 
-                bb_lower = tf_data.get("bb_lower")
-                bb_upper = tf_data.get("bb_upper")
-                swing_low = min([c["low"] for c in raw_4h[-5:]]) if raw_4h else None
-                swing_high = max([c["high"] for c in raw_4h[-5:]]) if raw_4h else None
+            if not entry_1 or not entry_2:
+                print(f"⚠️ Không có entry từ GPT cho {sym} -> BỎ QUA")
+                continue
 
-                stop_loss = sig.get("stop_loss")
-                if not stop_loss:
-                    stop_loss = generate_stop_loss(direction, sig["entry_1"], bb_lower, bb_upper, swing_low, swing_high, atr_val, sig["entry_2"])
-                    sig["stop_loss"] = stop_loss
-                else:
-                    sig["stop_loss"] = float(stop_loss)
+            bb_lower = tf_data.get("bb_lower")
+            bb_upper = tf_data.get("bb_upper")
+            swing_low = min([c["low"] for c in raw_4h[-5:]]) if raw_4h else None
+            swing_high = max([c["high"] for c in raw_4h[-5:]]) if raw_4h else None
 
-                supports = [lvl for _, lvl, t in sr_levels if t == "support"]
-                resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
-                trend_strength = tf_data.get("trend", "moderate")
-                confidence = sig.get("confidence", "medium")
-                if "tp" in sig and sig["tp"]:
-                    sig["take_profits"] = sig["tp"]
-                else:
-                    sig["take_profits"] = generate_take_profits(direction, sig["entry_1"], sig["stop_loss"], supports, resistances, trend_strength, confidence)
+            stop_loss = sig.get("stop_loss")
+            if not stop_loss:
+                stop_loss = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2)
+            sig["stop_loss"] = float(stop_loss)
 
-                sig["strategy_type"] = label_strategy_type(sig)
+            rr_ratio = abs(entry_1 - stop_loss)
+            if rr_ratio == 0:
+                print(f"⚠️ R:R không hợp lệ với {sym} -> BỎ QUA")
+                continue
 
-                from telegram_bot import format_message
-                text = format_message(sig)
-                message_id = send_message(text)
-                sig["message_id"] = message_id
+            supports = [lvl for _, lvl, t in sr_levels if t == "support"]
+            resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
+            trend_strength = tf_data.get("trend", "moderate")
+            confidence = sig.get("confidence", "medium")
+            sig["take_profits"] = generate_take_profits(direction, entry_1, stop_loss, supports, resistances, trend_strength, confidence)
+
+            sig["strategy_type"] = label_strategy_type(sig)
+
+            from telegram_bot import format_message
+            text = format_message(sig)
+            message_id = send_message(text)
+            sig["message_id"] = message_id
 
         save_signals(signals, all_symbols, data_by_symbol)
         save_active_signals(signals)
