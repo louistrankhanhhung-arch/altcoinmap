@@ -116,50 +116,29 @@ def classify_trend(candles):
             return "sideways"
     return "unknown"
 
-def generate_take_profits(direction, entry_1, stop_loss, supports, resistances, trend_strength="moderate", confidence="medium"):
-    levels = resistances if direction == "long" else supports
-    unique_levels = []
-    for lv in levels:
-        if all(abs(lv - ulv) / ulv > 0.005 for ulv in unique_levels):
-            unique_levels.append(lv)
+def generate_entries(price, atr_val, direction="long", ma20=None, rsi=None, sr_levels=[]):
+    entry_1 = round(price, 2)
+    entry_2 = price
+    if atr_val:
+        if direction == "long":
+            entry_2 = price - 0.75 * atr_val
+            if ma20 and ma20 < entry_1:
+                entry_2 = min(entry_2, ma20)
+            if rsi and rsi < 55:
+                entry_2 -= 0.5 * atr_val
+            for _, lvl, typ in sr_levels:
+                if typ == 'support' and lvl < entry_1:
+                    entry_2 = min(entry_2, lvl)
+        else:
+            entry_2 = price + 0.75 * atr_val
+            if ma20 and ma20 > entry_1:
+                entry_2 = max(entry_2, ma20)
+            if rsi and rsi > 45:
+                entry_2 += 0.5 * atr_val
+            for _, lvl, typ in sr_levels:
+                if typ == 'resistance' and lvl > entry_1:
+                    entry_2 = max(entry_2, lvl)
+    else:
+        entry_2 = price * 0.99 if direction == "long" else price * 1.01
 
-    tps = []
-    sorted_lv = sorted(unique_levels, reverse=(direction == "short"))
-    risk_distance = abs(entry_1 - stop_loss)
-
-    for lv in sorted_lv:
-        if (direction == "long" and lv > entry_1) or (direction == "short" and lv < entry_1):
-            rr = abs(lv - entry_1) / risk_distance
-            if rr >= 1.2:
-                tps.append(round(lv, 2))
-        if len(tps) >= 3:
-            break
-
-    allow_fib = (trend_strength in ["strong", "very_strong"]) and (confidence in ["medium", "high"])
-    if allow_fib:
-        for r in [1.618, 2.0]:
-            ext = entry_1 + r * risk_distance if direction == "long" else entry_1 - r * risk_distance
-            ext_rounded = round(ext, 2)
-            if all(abs(ext_rounded - tp) / tp > 0.01 for tp in tps):
-                tps.append(ext_rounded)
-
-    tps = sorted(tps) if direction == "long" else sorted(tps, reverse=True)
-    return tps[:5]
-
-def generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val=None):
-    sl = None
-    if direction == "long":
-        candidates = [val for val in [bb_lower, swing_low] if val is not None and val < entry_1]
-        sl = min(candidates) if candidates else entry_1 * 0.98
-        if atr_val:
-            sl = min(sl, entry_1 - 1.5 * atr_val)
-            if abs(entry_1 - sl) / entry_1 < 0.005:
-                sl = entry_1 - 2 * atr_val
-    elif direction == "short":
-        candidates = [val for val in [bb_upper, swing_high] if val is not None and val > entry_1]
-        sl = max(candidates) if candidates else entry_1 * 1.02
-        if atr_val:
-            sl = max(sl, entry_1 + 1.5 * atr_val)
-            if abs(entry_1 - sl) / entry_1 < 0.005:
-                sl = entry_1 + 2 * atr_val
-    return round(sl, 2) if sl else round(entry_1 * 0.99, 2)
+    return round(entry_1, 2), round(entry_2, 2)
