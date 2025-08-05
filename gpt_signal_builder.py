@@ -34,7 +34,7 @@ Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau, ưu t
 - Direction: Long hoặc Short
 - Entry 1:
 - Entry 2: (nếu áp dụng chiến lược scale-in hoặc DCA)
-- Stop Loss: theo hỗ trợ/kháng cự hoặc BB/SwingLow-SwingHigh, tránh đặt quá gần Entry
+- Stop Loss: theo hỗ trợ/kháng cự hoặc BB/SwingLow-SwingHigh hoặc ATR, tránh đặt quá gần Entry
 - TP1 đến TP5: chia đều theo vùng kháng cự/hỗ trợ hoặc Fibonacci, tối thiểu 2 TP, tối đa 5 TP (có thể bỏ TP4–TP5 nếu không có vùng mạnh)
 - Risk Level: Low / Medium / High
 - Leverage: 3x / 5x tuỳ mức độ tín hiệu
@@ -66,6 +66,19 @@ Chỉ trả về dữ liệu JSON.
                     continue
 
                 parsed["pair"] = symbol
+
+                # Lấy các thông số kỹ thuật để tự động tính SL nếu cần
+                direction = parsed.get("direction")
+                entry_1 = parsed.get("entry_1")
+                bb_lower = tf_data.get("4H", {}).get("bb_lower")
+                bb_upper = tf_data.get("4H", {}).get("bb_upper")
+                swing_low = tf_data.get("4H", {}).get("low")
+                swing_high = tf_data.get("4H", {}).get("high")
+                atr_val = tf_data.get("4H", {}).get("atr")
+
+                if direction and entry_1:
+                    parsed["stop_loss"] = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val)
+
                 results[symbol] = parsed
 
             except Exception as e:
