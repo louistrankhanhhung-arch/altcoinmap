@@ -120,29 +120,34 @@ def run_block(block_name):
             sr_levels = tf_data.get("sr_levels", [])
 
             if direction and current_price and atr_val:
-                # ✅ Bổ sung kiểm tra lệch hướng trend
                 trend = tf_data.get("trend")
                 if (direction == "long" and trend == "downtrend") or (direction == "short" and trend == "uptrend"):
                     print(f"⚠️ GPT chọn {direction.upper()} khi trend 4H là {trend} -> BỎ QUA {sym}")
                     continue
 
-                entry_1, entry_2 = generate_entries(current_price, atr_val, direction, ma20, rsi, sr_levels)
-                sig["entry_1"] = entry_1
-                sig["entry_2"] = entry_2
+                entry_1 = sig.get("entry_1")
+                entry_2 = sig.get("entry_2")
+
+                if not entry_1 or not entry_2:
+                    entry_1, entry_2 = generate_entries(current_price, atr_val, direction, ma20, rsi, sr_levels)
+                    sig["entry_1"] = entry_1
+                    sig["entry_2"] = entry_2
 
                 bb_lower = tf_data.get("bb_lower")
                 bb_upper = tf_data.get("bb_upper")
                 swing_low = min([c["low"] for c in raw_4h[-5:]]) if raw_4h else None
                 swing_high = max([c["high"] for c in raw_4h[-5:]]) if raw_4h else None
 
-                stop_loss = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2)
-                sig["stop_loss"] = stop_loss
+                stop_loss = sig.get("stop_loss")
+                if not stop_loss:
+                    stop_loss = generate_stop_loss(direction, sig["entry_1"], bb_lower, bb_upper, swing_low, swing_high, atr_val, sig["entry_2"])
+                    sig["stop_loss"] = stop_loss
 
                 supports = [lvl for _, lvl, t in sr_levels if t == "support"]
                 resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
                 trend_strength = tf_data.get("trend", "moderate")
                 confidence = sig.get("confidence", "medium")
-                sig["take_profits"] = generate_take_profits(direction, entry_1, stop_loss, supports, resistances, trend_strength, confidence)
+                sig["take_profits"] = generate_take_profits(direction, sig["entry_1"], sig["stop_loss"], supports, resistances, trend_strength, confidence)
 
                 sig["strategy_type"] = label_strategy_type(sig)
 
