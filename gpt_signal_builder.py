@@ -2,7 +2,16 @@ import os
 import openai
 from datetime import datetime, UTC
 from utils import parse_signal_response
-from indicators import generate_stop_loss, generate_entries
+from indicators import generate_entries
+
+# Hàm tạm thời để khắc phục lỗi thiếu generate_stop_loss
+
+def generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2):
+    if direction == "long":
+        sl = min(entry_2 - 1.5 * atr_val, bb_lower or entry_2, swing_low or entry_2)
+    else:
+        sl = max(entry_2 + 1.5 * atr_val, bb_upper or entry_2, swing_high or entry_2)
+    return round(sl, 4)
 
 # Gửi từng coin một với prompt có định dạng từ PROMPT_TEMPLATE
 async def get_gpt_signals(data_by_symbol):
