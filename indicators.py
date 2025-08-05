@@ -116,7 +116,6 @@ def classify_trend(candles):
             return "sideways"
     return "unknown"
 
-
 def generate_entries(price, atr_val, direction="long", ma20=None, rsi=None, sr_levels=[]):
     nearest_supports = sorted([lvl for _, lvl, typ in sr_levels if typ == 'support'], reverse=True)
     nearest_resistances = sorted([lvl for _, lvl, typ in sr_levels if typ == 'resistance'])
@@ -141,33 +140,15 @@ def generate_entries(price, atr_val, direction="long", ma20=None, rsi=None, sr_l
     else:
         entry_2 = entry_1 + min(1.5 * atr_val, 0.02 * entry_1)
 
-    return round(entry_1, 4), round(entry_2, 4)
-
-    entry_1 = round(price, 2)
-    entry_2 = price
-    if atr_val:
+    # Giới hạn chênh lệch entry không quá 5%
+    max_gap_pct = 0.05
+    if abs(entry_1 - entry_2) / entry_1 > max_gap_pct:
         if direction == "long":
-            entry_2 = price - 0.75 * atr_val
-            if ma20 and ma20 < entry_1:
-                entry_2 = min(entry_2, ma20)
-            if rsi and rsi < 55:
-                entry_2 -= 0.5 * atr_val
-            for _, lvl, typ in sr_levels:
-                if typ == 'support' and lvl < entry_1:
-                    entry_2 = min(entry_2, lvl)
+            entry_2 = entry_1 * (1 - max_gap_pct)
         else:
-            entry_2 = price + 0.75 * atr_val
-            if ma20 and ma20 > entry_1:
-                entry_2 = max(entry_2, ma20)
-            if rsi and rsi > 45:
-                entry_2 += 0.5 * atr_val
-            for _, lvl, typ in sr_levels:
-                if typ == 'resistance' and lvl > entry_1:
-                    entry_2 = max(entry_2, lvl)
-    else:
-        entry_2 = price * 0.99 if direction == "long" else price * 1.01
+            entry_2 = entry_1 * (1 + max_gap_pct)
 
-    return round(entry_1, 2), round(entry_2, 2)
+    return round(entry_1, 4), round(entry_2, 4)
 
 def generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2):
     if direction == "long":
@@ -195,4 +176,8 @@ def generate_take_profits(direction, entry_1, stop_loss, supports, resistances, 
         if base_tp not in levels:
             levels.insert(0, round(base_tp, 2))
         tps = levels[:5]
-    return tps
+
+    # Lọc TP nếu vượt quá 10% so với Entry1
+    max_tp_pct = 0.1
+    filtered = [tp for tp in tps if abs(tp - entry_1) / entry_1 <= max_tp_pct]
+    return filtered[:5] if filtered else tps[:3]
