@@ -2,7 +2,7 @@ import os
 import openai
 from datetime import datetime, UTC
 from utils import parse_signal_response
-from indicators import generate_take_profits
+from indicators import generate_take_profits, generate_stop_loss
 
 # Gửi từng coin một với prompt có định dạng từ PROMPT_TEMPLATE
 async def get_gpt_signals(data_by_symbol):
@@ -66,7 +66,6 @@ Chỉ trả về dữ liệu JSON.
             def validate_signal(p, tf_data):
                 try:
                     entry_1 = float(p["entry_1"])
-                    sl = float(p["stop_loss"])
                     direction = p["direction"].lower()
 
                     trend_1h = tf_data.get("1H", {}).get("trend", "unknown")
@@ -104,14 +103,21 @@ Chỉ trả về dữ liệu JSON.
                     supports_4h = [price for _, price, typ in sr_4h if typ == "support"]
                     resistances_4h = [price for _, price, typ in sr_4h if typ == "resistance"]
 
-                    # Đặt TP mới linh hoạt
+                    bb_lower = tf_data.get("4H", {}).get("bb_lower")
+                    bb_upper = tf_data.get("4H", {}).get("bb_upper")
+                    swing_low = tf_data.get("4H", {}).get("low")
+                    swing_high = tf_data.get("4H", {}).get("high")
+
+                    stop_loss = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high)
+                    p["stop_loss"] = stop_loss
+
                     trend_strength = "strong" if trend_1h == trend_4h == trend_1d else "moderate"
-                    tps = generate_take_profits(direction, entry_1, sl, supports_4h, resistances_4h, trend_strength, p.get("confidence", "medium"))
+                    tps = generate_take_profits(direction, entry_1, stop_loss, supports_4h, resistances_4h, trend_strength, p.get("confidence", "medium"))
                     p["tp"] = tps
 
                     tp = p["tp"]
                     tp_range_ok = abs(float(tp[-1]) - entry_1) / entry_1 >= 0.01
-                    sl_range_ok = abs(entry_1 - sl) / entry_1 >= 0.005
+                    sl_range_ok = abs(entry_1 - stop_loss) / entry_1 >= 0.005
 
                     score = 0
                     if strategy_type == "scale-in":
