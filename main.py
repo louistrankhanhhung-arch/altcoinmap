@@ -161,12 +161,17 @@ def run_block(block_name):
                 if not stop_loss:
                     stop_loss = generate_stop_loss(direction, sig["entry_1"], bb_lower, bb_upper, swing_low, swing_high, atr_val, sig["entry_2"])
                     sig["stop_loss"] = stop_loss
+                else:
+                    sig["stop_loss"] = float(stop_loss)
 
                 supports = [lvl for _, lvl, t in sr_levels if t == "support"]
                 resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
                 trend_strength = tf_data.get("trend", "moderate")
                 confidence = sig.get("confidence", "medium")
-                sig["take_profits"] = generate_take_profits(direction, sig["entry_1"], sig["stop_loss"], supports, resistances, trend_strength, confidence)
+                if "tp" in sig and sig["tp"]:
+                    sig["take_profits"] = sig["tp"]
+                else:
+                    sig["take_profits"] = generate_take_profits(direction, sig["entry_1"], sig["stop_loss"], supports, resistances, trend_strength, confidence)
 
                 sig["strategy_type"] = label_strategy_type(sig)
 
