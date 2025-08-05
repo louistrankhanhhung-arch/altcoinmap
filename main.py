@@ -108,6 +108,11 @@ def run_block(block_name):
         all_symbols = list(data_by_symbol.keys())
 
         for sig in signals:
+            # Chuẩn hóa key nếu GPT trả về sai định dạng (chữ hoa, dấu cách...)
+            sig["entry_1"] = float(sig.get("entry_1") or sig.get("Entry 1") or sig.get("Entry_1") or 0)
+            sig["entry_2"] = float(sig.get("entry_2") or sig.get("Entry 2") or sig.get("Entry_2") or 0)
+            sig["stop_loss"] = float(sig.get("stop_loss") or sig.get("Stop Loss") or sig.get("Stop_Loss") or 0)
+
             sym = sig["pair"]
             tf_data = data_by_symbol.get(sym, {}).get("4H", {})
             raw_4h = raw_data_by_symbol.get(sym, {}).get("4H", [])
