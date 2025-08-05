@@ -34,7 +34,8 @@ Dưới đây là dữ liệu kỹ thuật của {symbol} theo từng khung th�
 Giá hiện tại: {current_price}
 Xu hướng 4H: {trend_4h}, xu hướng 1D: {trend_1d}
 
-Hãy đánh giá xem có cơ hội giao dịch không dựa trên xu hướng (Trend), lực nến, RSI, MA, Bollinger Bands.
+Hãy đánh giá xem có cơ hội giao dịch không dựa trên xu hướng (Trend), lực nến, RSI, MA, Bollinger Bands. 
+Các mức Entry, Stop Loss và Take Profit cần được xác định dựa trên các chỉ báo kỹ thuật như hỗ trợ/kháng cự, Bollinger Bands, MA và ATR. Tránh đặt Entry quá xa giá hiện tại. Stop Loss không nên quá gần. TP nên thực tế và có thể đạt được trong bối cảnh thị trường. Tỷ lệ R:R nên hợp lý, ví dụ 1:1.5 trở lên.
 Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau, ưu tiên đúng kỹ thuật và thực tế thị trường:
 
 - Symbol: {symbol} 
