@@ -57,11 +57,12 @@ Chỉ trả về dữ liệu JSON.
                 reply = response.choices[0].message.content
                 print(f"📩 GPT raw reply for {symbol}:", reply)
                 parsed = parse_signal_response(reply)
-                parsed["pair"] = symbol
 
                 if not parsed:
                     print(f"⚠️ GPT trả về định dạng không hợp lệ cho {symbol}.")
                     continue
+
+                parsed["pair"] = symbol
 
                 def validate_signal(p, tf_data):
                     try:
@@ -115,7 +116,11 @@ Chỉ trả về dữ liệu JSON.
                         tps = generate_take_profits(direction, entry_1, stop_loss, supports_4h, resistances_4h, trend_strength, p.get("confidence", "medium"))
                         p["tp"] = tps
 
-                        tp = p["tp"]
+                        tp = p.get("tp", [])
+                        if not tp:
+                            print(f"⚠️ {symbol} không có TP nào hợp lệ.")
+                            return False
+
                         tp_range_ok = abs(float(tp[-1]) - entry_1) / entry_1 >= 0.01
                         sl_range_ok = abs(entry_1 - stop_loss) / entry_1 >= 0.005
 
