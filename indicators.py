@@ -80,7 +80,6 @@ def compute_indicators(candles):
 
     return candles
 
-
 def classify_trend(candles):
     if not candles or candles[-1].get("ma20") is None:
         return "unknown"
@@ -96,3 +95,40 @@ def classify_trend(candles):
         else:
             return "sideways"
     return "unknown"
+
+def generate_take_profits(direction, entry_1, stop_loss, supports, resistances, trend_strength="moderate", confidence="medium"):
+    levels = resistances if direction == "long" else supports
+    unique_levels = []
+    for lv in levels:
+        if all(abs(lv - ulv) / ulv > 0.005 for ulv in unique_levels):
+            unique_levels.append(lv)
+
+    tps = []
+    sorted_lv = sorted(unique_levels, reverse=(direction == "short"))
+    for lv in sorted_lv:
+        if (direction == "long" and lv > entry_1) or (direction == "short" and lv < entry_1):
+            tps.append(round(lv, 2))
+        if len(tps) >= 3:
+            break
+
+    allow_fib = (trend_strength in ["strong", "very_strong"]) and (confidence in ["medium", "high"])
+    if allow_fib:
+        risk_distance = abs(entry_1 - stop_loss)
+        fib_ratios = [1.0, 1.618]
+        for r in fib_ratios:
+            ext = entry_1 + r * risk_distance if direction == "long" else entry_1 - r * risk_distance
+            ext_rounded = round(ext, 2)
+            if ext_rounded not in tps:
+                tps.append(ext_rounded)
+
+    tps = sorted(tps) if direction == "long" else sorted(tps, reverse=True)
+    return tps[:5]
+
+def generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high):
+    if direction == "long":
+        candidates = [val for val in [bb_lower, swing_low] if val is not None and val < entry_1]
+        return round(min(candidates), 2) if candidates else round(entry_1 * 0.98, 2)
+    elif direction == "short":
+        candidates = [val for val in [bb_upper, swing_high] if val is not None and val > entry_1]
+        return round(max(candidates), 2) if candidates else round(entry_1 * 1.02, 2)
+    return round(entry_1 * 0.99, 2)
