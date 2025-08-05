@@ -20,26 +20,32 @@ def send_signals(signals):
                 if 'pair' not in s:
                     s['pair'] = s.get('symbol', 'UNKNOWN')
                 text = format_message(s)
-                send_message(text)
+                message_id = send_message(text)
+                s["message_id"] = message_id
     elif isinstance(signals, str):
         send_message(signals)
 
-def send_message(text):
+def send_message(text, reply_to_id=None):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     data = {
         "chat_id": USER_ID,
         "text": text,
         "parse_mode": "HTML"
     }
-    print(f"🔔 [SEND] {text[:80]}..." if len(text) > 80 else f"🔔 [SEND] {text}")
+    if reply_to_id:
+        data["reply_to_message_id"] = reply_to_id
+
+    print(f"[SEND] {text[:80]}..." if len(text) > 80 else f"[SEND] {text}")
     try:
         response = requests.post(url, json=data, timeout=10)
         if response.status_code != 200:
             print(f"❌ Failed to send message: {response.status_code} - {response.text}")
         else:
             print("✅ Message sent to Telegram.")
+            return response.json().get("result", {}).get("message_id")
     except Exception as e:
         print(f"❌ Telegram send failed: {e}")
+    return None
 
 decimal_map = {
     "BTC": 2,
@@ -68,15 +74,17 @@ def format_message(s):
     try:
         pair = s['pair']
         base_symbol = pair.split("/")[0]
-        return f"""<b>{pair} | {s.get('direction', '?').upper()}</b>
-🎯 <b>Entry 1:</b> {format_price(s['entry_1'], base_symbol)}
-🎯 <b>Entry 2:</b> {format_price(s['entry_2'], base_symbol)}
-📉 <b>SL:</b> {format_price(s['stop_loss'], base_symbol)}
-💰 <b>TPs:</b> {', '.join(format_price(p, base_symbol) for p in s['tp'])}
-🧠 <b>Assessment:</b> {s.get('assessment', 'Không có đánh giá')}
-⚖️ <b>Risk:</b> {s.get('risk_level', '?')} | <b>Leverage:</b> {s.get('leverage', 'x5')}
-📐 <b>Strategy:</b> {s.get('strategy_type', '...')}
-🔎 <b>Confidence:</b> {s.get('confidence', '?')}
-🔍 <b>Key Watch:</b> {s.get('key_watch', '...')}"""
+        return (
+            f"<b>{pair} | {s.get('direction', '?').upper()}</b>\n"
+            f"<b>Entry 1:</b> {format_price(s['entry_1'], base_symbol)}\n"
+            f"<b>Entry 2:</b> {format_price(s['entry_2'], base_symbol)}\n"
+            f"<b>SL:</b> {format_price(s['stop_loss'], base_symbol)}\n"
+            f"<b>TPs:</b> {', '.join(format_price(p, base_symbol) for p in s['tp'])}\n"
+            f"<b>Assessment:</b> {s.get('assessment', 'Không có đánh giá')}\n"
+            f"<b>Risk:</b> {s.get('risk_level', '?')} | <b>Leverage:</b> {s.get('leverage', 'x5')}\n"
+            f"<b>Strategy:</b> {s.get('strategy_type', '...')}\n"
+            f"<b>Confidence:</b> {s.get('confidence', '?')}\n"
+            f"<b>Key Watch:</b> {s.get('key_watch', '...')}"
+        )
     except Exception as e:
         return "⚠️ Định dạng tín hiệu lỗi: " + str(e)
