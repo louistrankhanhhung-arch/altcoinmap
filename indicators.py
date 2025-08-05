@@ -143,6 +143,17 @@ def generate_entries(price, atr_val, direction="long", ma20=None, rsi=None, sr_l
 
     return round(entry_1, 2), round(entry_2, 2)
 
+def generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2):
+    if direction == "long":
+        sl = min(entry_2 - 1.5 * atr_val, bb_lower or entry_2, swing_low or entry_2)
+        if sl > entry_2:
+            sl = entry_2 - 0.5 * atr_val
+    else:
+        sl = max(entry_2 + 1.5 * atr_val, bb_upper or entry_2, swing_high or entry_2)
+        if sl < entry_2:
+            sl = entry_2 + 0.5 * atr_val
+    return round(sl, 4)
+
 def generate_take_profits(direction, entry_1, stop_loss, supports, resistances, trend_strength="moderate", confidence="medium"):
     tps = []
     rr_min = 1.2
