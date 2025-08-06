@@ -86,7 +86,16 @@ def run_block(block_name):
                     "candle_signal": signal,
                     **candles[-1]
                 }
+
+# ➕ THÊM VÀO TẠI ĐÂY – kiểm tra nếu cả 3 khung đều sideways thì bỏ qua
+            trends = [enriched[tf]["trend"] for tf in TF_MAP if tf in enriched]
+            if all(t == "sideways" for t in trends):
+                print(f"⚠️ {symbol} có cả 3 khung thời gian đều sideways -> BỎ QUA")
+                continue
+
+# Gán dữ liệu nếu hợp lệ
             data_by_symbol[symbol] = enriched
+
             
             trend_1h = enriched.get("1H", {}).get("trend", "unknown")
             trend_4h = enriched.get("4H", {}).get("trend", "unknown")
