@@ -119,6 +119,15 @@ def run_block(block_name):
         all_symbols = list(data_by_symbol.keys())
 
         for sig in signals:
+            try:
+                from telegram_bot import format_message
+                text = format_message(sig)
+                message_id = send_message(text)
+                sig["message_id"] = message_id
+            except Exception as e:
+               sym = sig.get("pair") or sig.get("symbol", "UNKNOWN")
+                print(f"❌ Lỗi khi gửi {sym} tới Telegram: {e}")
+
             for k in ["Entry 1", "Entry_1"]:
                 if k in sig and sig[k] is not None: sig["entry_1"] = float(sig[k])
             for k in ["Entry 2", "Entry_2"]:
