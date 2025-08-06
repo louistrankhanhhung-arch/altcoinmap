@@ -136,22 +136,42 @@ def run_block(block_name):
                 sym = sig.get("pair") or sig.get("symbol", "UNKNOWN")
                 print(f"❌ Lỗi khi gửi {sym} tới Telegram: {e}")
 
-            for k in ["Entry 1", "Entry_1"]:
-                try:
-                    sig["entry_1"] = float(sig[k])
-                except:
-                    sig["entry_1"] = None
+            # Entry 1
+            entry_keys = ["Entry 1", "Entry_1", "entry1", "entry_1"]
+            for k in entry_keys:
+                if k in sig:
+                    try:
+                        sig["entry_1"] = float(sig[k])
+                        break
+                    except:
+                        continue
+            else:
+                sig["entry_1"] = None
 
-            for k in ["Entry 2", "Entry_2"]:
-                try:
-                    sig["entry_2"] = float(sig[k])
-                except:
-                    sig["entry_2"] = None
-            for k in ["Stop Loss", "Stop_Loss"]:
-                try:
-                    sig["stop_loss"] = float(sig[k])
-                except:
-                    sig["stop_loss"] = None
+
+            # Entry 2
+            entry_keys = ["Entry 2", "Entry_2", "entry2", "entry_2"]
+            for k in entry_keys:
+                if k in sig:
+                    try:
+                        sig["entry_2"] = float(sig[k])
+                        break
+                    except:
+                        continue
+            else:
+                sig["entry_2"] = None
+                
+            # Stop loss
+            entry_keys = ["Stop loss", "Stop_loss", "stoploss", "stop_loss"]
+            for k in entry_keys:
+                if k in sig:
+                    try:
+                        sig["stop_loss"] = float(sig[k])
+                        break
+                    except:
+                        continue
+            else:
+                sig["stop_loss"] = None
 
             sym = sig.get("pair") or sig.get("symbol")
             tf_data = data_by_symbol.get(sym, {}).get("4H", {})
@@ -197,6 +217,15 @@ def run_block(block_name):
                 print(f"⚠️ Không có Stop Loss từ GPT cho {sym} -> BỎ QUA")
                 continue
             sig["stop_loss"] = float(stop_loss)
+
+# Chuẩn hóa take_profits nếu được GPT trả về dưới dạng mảng hoặc dict
+            if "take_profit" in sig and isinstance(sig["take_profit"], list):
+                for i, tp in enumerate(sig["take_profit"][:5]):
+                    sig[f"tp{i+1}"] = tp
+            elif "take_profits" in sig and isinstance(sig["take_profits"], list):
+                for i, tp in enumerate(sig["take_profits"][:5]):
+                    sig[f"tp{i+1}"] = tp
+
 
             rr_ratio = abs(entry_1 - stop_loss)
             if rr_ratio == 0:
