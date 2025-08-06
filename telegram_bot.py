@@ -77,11 +77,9 @@ def format_message(s):
         base_symbol = pair.split("/")[0]
 
         # Lấy danh sách TP từ các key khác nhau
-        tp_list = (
-            s.get("tp") or
-            s.get("take_profits") or
-            [s.get(k) for k in ["tp1", "tp2", "tp3", "tp4", "tp5"] if s.get(k) is not None]
-        )
+        tp_raw = s.get("tp") or s.get("take_profits") or [s.get(k) for k in ["tp1", "tp2", "tp3", "tp4", "tp5"]]
+        tp_list = [p for p in tp_raw if p is not None]
+
         
         entry2_line = ""
         if s.get("entry_2") is not None:
