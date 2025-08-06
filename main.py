@@ -149,14 +149,14 @@ def run_block(block_name):
             entry_2 = sig.get("entry_2")
 
             # Kiểm tra entry lệch quá 10% tùy theo hướng giao dịch -> loại bỏ
-            if direction.lower() == "long" and entry_1 > current_price * 1.1:
+            if direction.lower() == "long" and entry_1 is not None and current_price is not None and entry_1 > current_price * 1.1:
                 print(f"⚠️ Entry LONG quá xa giá hiện tại ({current_price}) -> BỎ QUA {sym}")
                 continue
-            elif direction.lower() == "short" and entry_1 < current_price * 0.9:
+            elif direction.lower() == "short" and entry_1 is not None and current_price is not None and entry_1 < current_price * 0.9:
                 print(f"⚠️ Entry SHORT quá xa giá hiện tại ({current_price}) -> BỎ QUA {sym}")
                 continue
 
-            if abs(entry_1 - current_price) / current_price > 0.1:
+            if entry_1 is None or current_price is None or abs(entry_1 - current_price) / current_price > 0.1:
                 print(f"⚠️ Entry 1 lệch quá xa giá hiện tại ({current_price}) -> BỎ QUA {sym}")
                 continue
 
