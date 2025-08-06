@@ -115,6 +115,7 @@ def run_block(block_name):
         signals_dict = asyncio.run(get_gpt_signals(data_by_symbol, suggested_tps_by_symbol))
         signals = list(signals_dict.values())
         signals = [s for s in signals if not is_duplicate_signal(s)]
+        print(f"✅ Số tín hiệu hợp lệ sau lọc: {len(signals)}")
         all_symbols = list(data_by_symbol.keys())
 
         for sig in signals:
@@ -189,11 +190,13 @@ def run_block(block_name):
             trend_strength = tf_data.get("trend", "moderate")
             confidence = sig.get("confidence", "medium")
             sig["strategy_type"] = label_strategy_type(sig)
-
+        try:
             from telegram_bot import format_message
             text = format_message(sig)
             message_id = send_message(text)
             sig["message_id"] = message_id
+        except Exception as e:
+            print(f"❌ Lỗi khi gửi {sym} tới Telegram: {e}")
 
         save_signals(signals, all_symbols, data_by_symbol)
         save_active_signals(signals)
