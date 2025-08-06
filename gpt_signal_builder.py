@@ -48,7 +48,6 @@ Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau, ưu t
 - TP1 đến TP5: chia đều theo vùng kháng cự/hỗ trợ hoặc Fibonacci, tối thiểu 2 TP, tối đa 5 TP (có thể bỏ TP4–TP5 nếu không có vùng mạnh)
 - Risk Level: Low / Medium / High
 - Leverage: 3x / 5x tuỳ mức độ tín hiệu
-- Strategy: dca hoặc scale-in (nêu rõ khi nào dùng)
 - Confidence: high / medium / low (tùy theo đồng thuận nhiều khung thời gian và mô hình nến)
 - Key watch: mô tả điều kiện cần theo dõi thêm (ví dụ: kháng cự gần, RSI breakout, BB chạm biên,...)
 - Nhận định ngắn gọn về tín hiệu này bằng tiếng Việt (gợi ý hành động cụ thể và rủi ro nếu có).
