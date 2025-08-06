@@ -125,7 +125,7 @@ def run_block(block_name):
                 message_id = send_message(text)
                 sig["message_id"] = message_id
             except Exception as e:
-               sym = sig.get("pair") or sig.get("symbol", "UNKNOWN")
+                sym = sig.get("pair") or sig.get("symbol", "UNKNOWN")
                 print(f"❌ Lỗi khi gửi {sym} tới Telegram: {e}")
 
             for k in ["Entry 1", "Entry_1"]:
@@ -188,7 +188,7 @@ def run_block(block_name):
                 rr_reward = abs(tp1 - entry_1)
                 rr = rr_reward / rr_ratio if rr_ratio != 0 else 0
                 if rr < 1.2:
-                    print(f"⚠️ R:R quá thấp ({rr:.2f}) -> BỎ QUA {sym}")
+                    print(f"⚠️ R:R quá thấp ({rr:.2f}) cho {sym} | entry: {entry_1}, sl: {stop_loss}, tp1: {tp1}")
                     continue
                 else:
                     print(f"✅ R:R = {rr:.2f} cho {sym}")
@@ -199,13 +199,6 @@ def run_block(block_name):
             trend_strength = tf_data.get("trend", "moderate")
             confidence = sig.get("confidence", "medium")
             sig["strategy_type"] = label_strategy_type(sig)
-        try:
-            from telegram_bot import format_message
-            text = format_message(sig)
-            message_id = send_message(text)
-            sig["message_id"] = message_id
-        except Exception as e:
-            print(f"❌ Lỗi khi gửi {sym} tới Telegram: {e}")
 
         save_signals(signals, all_symbols, data_by_symbol)
         save_active_signals(signals)
