@@ -26,10 +26,14 @@ def is_duplicate_signal(signal):
         with open("active_signals.json", "r") as f:
             active = json.load(f)
         for sig in active:
-            if sig["pair"] == signal["pair"] and sig["direction"].lower() == signal["direction"].lower() and sig["status"] == "open":
+            if (
+                sig.get("pair") == signal.get("pair") and
+                sig.get("direction", "").lower() == signal.get("direction", "").lower() and
+                sig.get("status") == "open"
+            ):
                 return True
-    except:
-        pass
+    except Exception as e:
+        print(f"⚠️ Lỗi khi kiểm tra trùng lặp: {e}")
     return False
 
 def check_signals():
