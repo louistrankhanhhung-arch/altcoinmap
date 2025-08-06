@@ -74,16 +74,33 @@ def format_message(s):
     try:
         pair = s['pair']
         base_symbol = pair.split("/")[0]
+
+        # Lấy danh sách TP từ các key khác nhau
+        tp_list = (
+            s.get("tp") or
+            s.get("take_profits") or
+            [s.get(k) for k in ["tp1", "tp2", "tp3", "tp4", "tp5"] if s.get(k) is not None]
+        )
+
         return (
-            f"<b>{pair} | {s.get('direction', '?').upper()}</b>\n"
-            f"<b>Entry 1:</b> {format_price(s['entry_1'], base_symbol)}\n"
-            f"<b>Entry 2:</b> {format_price(s['entry_2'], base_symbol)}\n"
-            f"<b>SL:</b> {format_price(s['stop_loss'], base_symbol)}\n"
-            f"<b>TPs:</b> {', '.join(format_price(p, base_symbol) for p in s['tp'])}\n"
-            f"<b>Assessment:</b> {s.get('assessment', 'Không có đánh giá')}\n"
-            f"<b>Risk:</b> {s.get('risk_level', '?')} | <b>Leverage:</b> {s.get('leverage', 'x5')}\n"
-            f"<b>Strategy:</b> {s.get('strategy_type', '...')}\n"
-            f"<b>Confidence:</b> {s.get('confidence', '?')}\n"
+            f"<b>{pair} | {s.get('direction', '?').upper()}</b>
+"
+            f"<b>Entry 1:</b> {format_price(s.get('entry_1'), base_symbol)}
+"
+            f"<b>Entry 2:</b> {format_price(s.get('entry_2'), base_symbol)}
+"
+            f"<b>SL:</b> {format_price(s.get('stop_loss'), base_symbol)}
+"
+            f"<b>TPs:</b> {', '.join(format_price(p, base_symbol) for p in tp_list)}
+"
+            f"<b>Assessment:</b> {s.get('assessment', 'Không có đánh giá')}
+"
+            f"<b>Risk:</b> {s.get('risk_level', '?')} | <b>Leverage:</b> {s.get('leverage', 'x5')}
+"
+            f"<b>Strategy:</b> {s.get('strategy_type', '...')}
+"
+            f"<b>Confidence:</b> {s.get('confidence', '?')}
+"
             f"<b>Key Watch:</b> {s.get('key_watch', '...')}"
         )
     except Exception as e:
