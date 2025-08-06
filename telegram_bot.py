@@ -91,7 +91,7 @@ def format_message(s):
             f"<b>TPs:</b> {', '.join(format_price(p, base_symbol) for p in tp_list)}\n"
             f"<b>Assessment:</b> {s.get('assessment', 'Không có đánh giá')}\n"
             f"<b>Risk:</b> {s.get('risk_level', '?')} | <b>Leverage:</b> {s.get('leverage', 'x5')}\n"
-            f"<b>Strategy:</b> {s.get('strategy_type', '...')}\n"
+            f"{f'<b>Strategy:</b> {s.get('strategy_type')}\n' if s.get('strategy_type') else ''}"
             f"<b>Confidence:</b> {s.get('confidence', '?')}\n"
             f"<b>Key Watch:</b> {s.get('key_watch', '...')}"
         )
