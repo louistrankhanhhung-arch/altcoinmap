@@ -4,7 +4,6 @@ from datetime import datetime, UTC
 import json
 from utils import parse_signal_response
 
-
 # Gửi từng coin một với prompt có định dạng từ PROMPT_TEMPLATE
 async def get_gpt_signals(data_by_symbol, suggested_tps_by_symbol):
     results = {}
@@ -43,36 +42,23 @@ Hãy đánh giá xem có cơ hội giao dịch không dựa trên xu hướng (T
 Các mức Entry, Stop Loss và Take Profit cần được xác định dựa trên các chỉ báo kỹ thuật như hỗ trợ/kháng cự, Bollinger Bands, MA và ATR. Tránh đặt Entry quá xa giá hiện tại. Stop Loss không nên quá gần. TP nên thực tế và có thể đạt được trong bối cảnh thị trường. Tỷ lệ R:R nên hợp lý, ví dụ 1:1.5 trở lên.
 Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau, ưu tiên đúng kỹ thuật và thực tế thị trường:
 
-- Symbol: {symbol} 
-- Direction: Long hoặc Short
-- Entry 1:
-- Entry 2: (nếu áp dụng chiến lược scale-in hoặc DCA)
-- Stop Loss: theo hỗ trợ/kháng cự hoặc BB/SwingLow-SwingHigh hoặc ATR, tránh đặt quá gần Entry
-- TP1 đến TP5: chia đều theo vùng kháng cự/hỗ trợ hoặc Fibonacci, tối thiểu 2 TP, tối đa 5 TP (có thể bỏ TP4–TP5 nếu không có vùng mạnh)
-- Risk Level: Low / Medium / High
-- Leverage: 3x / 5x tuỳ mức độ tín hiệu
-- Confidence: high / medium / low (tùy theo đồng thuận nhiều khung thời gian và mô hình nến)
-- Key watch: mô tả điều kiện cần theo dõi thêm (ví dụ: kháng cự gần, RSI breakout, BB chạm biên,...)
-- Nhận định ngắn gọn về tín hiệu này bằng tiếng Việt (gợi ý hành động cụ thể và rủi ro nếu có).
-
-Chỉ trả về dữ liệu JSON với định dạng sau:
-
-{{
-  "symbol": "AVAX/USDT",
-  "direction": "Long",
-  "entry1": 21.931,
-  "entry2": 21.5,
-  "stop_loss": 20.5,
-  "take_profits": [22.5, 23.0, 23.5],
-  "risk_level": "Medium",
-  "leverage": "3x",
-  "confidence": "medium",
+"""
+                prompt += """
+{
+  "symbol": "...",
+  "direction": "Long hoặc Short",
+  "entry1": ...,
+  "entry2": ...,  
+  "stop_loss": ..., 
+  "take_profits": [...],
+  "risk_level": "Low / Medium / High",
+  "leverage": "3x / 5x",
+  "confidence": "high / medium / low",
   "key_watch": "...",
   "nhan_dinh": "..."
-}}
+}
 
-⚠️ `take_profits` phải là một danh sách các mức TP (tối đa 5) và được đặt tên đúng như vậy. KHÔNG dùng tp1, tp2, tp3,... riêng lẻ.
-
+⚠️ Chỉ trả về nội dung JSON thuần túy như mẫu trên, KHÔNG thêm ```json hoặc bất kỳ ký tự nào khác.
 """
 
                 now = datetime.now(UTC)
@@ -86,7 +72,7 @@ Chỉ trả về dữ liệu JSON với định dạng sau:
                     timeout=30
                 )
 
-                reply = response.choices[0].message.content
+                reply = response.choices[0].message.content.strip()
                 print(f"📩 GPT raw reply for {symbol}:", reply)
                 parsed = parse_signal_response(reply)
 
