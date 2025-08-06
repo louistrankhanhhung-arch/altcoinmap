@@ -116,11 +116,21 @@ def run_block(block_name):
                 print(f"❌ Lỗi khi gửi {sym} tới Telegram: {e}")
 
             for k in ["Entry 1", "Entry_1"]:
-                if k in sig and sig[k] is not None: sig["entry_1"] = float(sig[k])
+                try:
+                    sig["entry_1"] = float(sig[k])
+                except:
+                    sig["entry_1"] = None
+
             for k in ["Entry 2", "Entry_2"]:
-                if k in sig and sig[k] is not None: sig["entry_2"] = float(sig[k])
+                try:
+                    sig["entry_2"] = float(sig[k])
+                except:
+                    sig["entry_2"] = None
             for k in ["Stop Loss", "Stop_Loss"]:
-                if k in sig and sig[k] is not None: sig["stop_loss"] = float(sig[k])
+                try:
+                    sig["stop_loss"] = float(sig[k])
+                except:
+                    sig["stop_loss"] = None
 
             sym = sig.get("pair") or sig.get("symbol")
             tf_data = data_by_symbol.get(sym, {}).get("4H", {})
