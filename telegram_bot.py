@@ -86,7 +86,7 @@ def format_message(s):
         return (
             f"<b>{pair} | {s.get('direction', '?').upper()}</b>\n"
             f"<b>Entry 1:</b> {format_price(s.get('entry_1'), base_symbol)}\n"
-            f"<b>Entry 2:</b> {format_price(s.get('entry_2'), base_symbol)}\n"
+            f"{f'<b>Entry 2:</b> {format_price(s.get('entry_2'), base_symbol)}\\n' if s.get('entry_2') is not None else ''}"
             f"<b>SL:</b> {format_price(s.get('stop_loss'), base_symbol)}\n"
             f"<b>TPs:</b> {', '.join(format_price(p, base_symbol) for p in tp_list)}\n"
             f"<b>Assessment:</b> {s.get('assessment', 'Không có đánh giá')}\n"
