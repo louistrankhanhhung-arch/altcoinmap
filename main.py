@@ -7,7 +7,7 @@ from gpt_signal_builder import get_gpt_signals, BLOCKS
 from kucoin_api import fetch_coin_data
 from telegram_bot import send_message
 from signal_logger import save_signals
-from indicators import compute_indicators, generate_stop_loss, generate_entries, generate_take_profits
+from indicators import compute_indicators, generate_suggested_tps
 from signal_tracker import is_duplicate_signal
 
 ACTIVE_FILE = "active_signals.json"
@@ -101,7 +101,18 @@ def run_block(block_name):
                 }
             data_by_symbol[symbol] = enriched
 
+                suggested_tps_by_symbol = {}
+        for symbol in data_by_symbol:
+            tf_data = data_by_symbol[symbol].get("4H", {})
+            direction = tf_data.get("trend", "sideways")
+            price = tf_data.get("close")
+            sr_levels = tf_data.get("sr_levels", [])
+            if price and direction and sr_levels:
+                suggested = generate_suggested_tps(price, direction, sr_levels)
+                suggested_tps_by_symbol[symbol] = suggested
+
         print("📊 Sending to GPT...")
+        signals_dict = asyncio.run(get_gpt_signals(data_by_symbol, suggested_tps_by_symbol))
         signals_dict = asyncio.run(get_gpt_signals(data_by_symbol))
         signals = list(signals_dict.values())
         signals = [s for s in signals if not is_duplicate_signal(s)]
@@ -167,9 +178,7 @@ def run_block(block_name):
             resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
             trend_strength = tf_data.get("trend", "moderate")
             confidence = sig.get("confidence", "medium")
-            sig["take_profits"] = generate_take_profits(direction, entry_1, stop_loss, supports, resistances, trend_strength, confidence)
-
-            sig["strategy_type"] = label_strategy_type(sig)
+                        sig["strategy_type"] = label_strategy_type(sig)
 
             from telegram_bot import format_message
             text = format_message(sig)
