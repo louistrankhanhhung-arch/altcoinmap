@@ -24,6 +24,7 @@ async def get_gpt_signals(data_by_symbol, suggested_tps_by_symbol):
                 current_price = tf_data.get("4H", {}).get("close", "N/A")
                 trend_4h = tf_data.get("4H", {}).get("trend", "unknown")
                 trend_1d = tf_data.get("1D", {}).get("trend", "unknown")
+                suggested_tps = suggested_tps_by_symbol.get(symbol, [])
 
                 prompt = f"""
 Bạn là một trợ lý giao dịch crypto chuyên nghiệp.
@@ -88,11 +89,6 @@ Chỉ trả về dữ liệu JSON.
                 ma20 = tf_4h.get("ma20")
                 rsi = tf_4h.get("rsi")
                 sr_levels = tf_4h.get("sr_levels")
-
-                if direction and atr_val and ma20 and rsi and sr_levels:
-                                        parsed["entry_1"] = entry_1
-                    parsed["entry_2"] = entry_2
-
                     
                 results[symbol] = parsed
 
