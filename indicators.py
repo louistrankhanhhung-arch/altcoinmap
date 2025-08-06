@@ -116,39 +116,14 @@ def classify_trend(candles):
             return "sideways"
     return "unknown"
 
-def generate_entries(price, atr_val, direction="long", ma20=None, rsi=None, sr_levels=[]):
-    nearest_supports = sorted([lvl for _, lvl, typ in sr_levels if typ == 'support'], reverse=True)
-    nearest_resistances = sorted([lvl for _, lvl, typ in sr_levels if typ == 'resistance'])
-
-    entry_1 = price
+def generate_suggested_tps(entry_1, direction, sr_levels):
+    supports = [lvl for _, lvl, typ in sr_levels if typ == 'support']
+    resistances = [lvl for _, lvl, typ in sr_levels if typ == 'resistance']
     if direction == "long":
-        for lvl in nearest_supports:
-            if lvl < price:
-                entry_1 = lvl
-                break
+        levels = sorted([lvl for lvl in resistances if lvl > entry_1])
     else:
-        for lvl in nearest_resistances:
-            if lvl > price:
-                entry_1 = lvl
-                break
-
-    if not entry_1:
-        entry_1 = round(price, 2)
-
-    if direction == "long":
-        entry_2 = entry_1 - min(1.5 * atr_val, 0.02 * entry_1)
-    else:
-        entry_2 = entry_1 + min(1.5 * atr_val, 0.02 * entry_1)
-
-    # Giới hạn chênh lệch entry không quá 5%
-    max_gap_pct = 0.05
-    if abs(entry_1 - entry_2) / entry_1 > max_gap_pct:
-        if direction == "long":
-            entry_2 = entry_1 * (1 - max_gap_pct)
-        else:
-            entry_2 = entry_1 * (1 + max_gap_pct)
-
-    return round(entry_1, 4), round(entry_2, 4)
+        levels = sorted([lvl for lvl in supports if lvl < entry_1], reverse=True)
+    return levels[:5]
 
 def generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2):
     if direction == "long":
@@ -160,24 +135,3 @@ def generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_
         if sl < entry_2:
             sl = entry_2 + 0.5 * atr_val
     return round(sl, 4)
-
-def generate_take_profits(direction, entry_1, stop_loss, supports, resistances, trend_strength="moderate", confidence="medium"):
-    tps = []
-    rr_min = 1.2
-    if direction == "long":
-        base_tp = entry_1 + (entry_1 - stop_loss) * rr_min
-        levels = sorted([lvl for lvl in resistances if lvl > entry_1])
-        if base_tp not in levels:
-            levels.insert(0, round(base_tp, 2))
-        tps = levels[:5]
-    else:
-        base_tp = entry_1 - (stop_loss - entry_1) * rr_min
-        levels = sorted([lvl for lvl in supports if lvl < entry_1], reverse=True)
-        if base_tp not in levels:
-            levels.insert(0, round(base_tp, 2))
-        tps = levels[:5]
-
-    # Lọc TP nếu vượt quá 10% so với Entry1
-    max_tp_pct = 0.1
-    filtered = [tp for tp in tps if abs(tp - entry_1) / entry_1 <= max_tp_pct]
-    return filtered[:5] if filtered else tps[:3]
