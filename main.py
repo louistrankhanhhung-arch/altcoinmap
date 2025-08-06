@@ -119,11 +119,11 @@ def run_block(block_name):
 
         for sig in signals:
             for k in ["Entry 1", "Entry_1"]:
-                if k in sig: sig["entry_1"] = float(sig[k])
+                if k in sig and sig[k] is not None: sig["entry_1"] = float(sig[k])
             for k in ["Entry 2", "Entry_2"]:
-                if k in sig: sig["entry_2"] = float(sig[k])
+                if k in sig and sig[k] is not None: sig["entry_2"] = float(sig[k])
             for k in ["Stop Loss", "Stop_Loss"]:
-                if k in sig: sig["stop_loss"] = float(sig[k])
+                if k in sig and sig[k] is not None: sig["stop_loss"] = float(sig[k])
 
             sym = sig.get("pair") or sig.get("symbol")
             tf_data = data_by_symbol.get(sym, {}).get("4H", {})
