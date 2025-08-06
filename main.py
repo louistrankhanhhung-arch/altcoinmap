@@ -5,7 +5,7 @@ import asyncio
 from datetime import datetime, UTC
 from gpt_signal_builder import get_gpt_signals, BLOCKS
 from kucoin_api import fetch_coin_data
-from telegram_bot import send_message
+from telegram_bot import send_message, format_message
 from signal_logger import save_signals
 from indicators import compute_indicators, generate_suggested_tps
 from signal_tracker import is_duplicate_signal
@@ -87,24 +87,13 @@ def run_block(block_name):
                     **candles[-1]
                 }
 
-# ➕ THÊM VÀO TẠI ĐÂY – kiểm tra nếu cả 3 khung đều sideways thì bỏ qua
             trends = [enriched[tf]["trend"] for tf in TF_MAP if tf in enriched]
             if all(t == "sideways" for t in trends):
                 print(f"⚠️ {symbol} có cả 3 khung thời gian đều sideways -> BỎ QUA")
                 continue
 
-# Gán dữ liệu nếu hợp lệ
             data_by_symbol[symbol] = enriched
 
-            
-            trend_1h = enriched.get("1H", {}).get("trend", "unknown")
-            trend_4h = enriched.get("4H", {}).get("trend", "unknown")
-            trend_1d = enriched.get("1D", {}).get("trend", "unknown")
-
-            if trend_1h == trend_4h == trend_1d == "sideways":
-                print(f"⚠️ {symbol} có cả 3 khung thời gian đều sideways -> BỎ QUA")
-                continue
-                
         suggested_tps_by_symbol = {}
         for symbol in data_by_symbol:
             tf_data = data_by_symbol[symbol].get("4H", {})
@@ -120,50 +109,9 @@ def run_block(block_name):
         signals = list(signals_dict.values())
         signals = [s for s in signals if not is_duplicate_signal(s)]
         print(f"✅ Số tín hiệu hợp lệ sau lọc: {len(signals)}")
-        all_symbols = list(data_by_symbol.keys())
 
+        final_signals = []
         for sig in signals:
-            if is_duplicate_signal(sig):
-                print(f"⚠️ Đã có tín hiệu {sig['pair']} theo hướng {sig['direction']} đang mở -> BỎ QUA")
-                continue
-
-            # Entry 1
-            entry_keys = ["Entry 1", "Entry_1", "entry1", "entry_1"]
-            for k in entry_keys:
-                if k in sig:
-                    try:
-                        sig["entry_1"] = float(sig[k])
-                        break
-                    except:
-                        continue
-            else:
-                sig["entry_1"] = None
-
-
-            # Entry 2
-            entry_keys = ["Entry 2", "Entry_2", "entry2", "entry_2"]
-            for k in entry_keys:
-                if k in sig:
-                    try:
-                        sig["entry_2"] = float(sig[k])
-                        break
-                    except:
-                        continue
-            else:
-                sig["entry_2"] = None
-                
-            # Stop loss
-            entry_keys = ["Stop loss", "Stop_loss", "stoploss", "stop_loss"]
-            for k in entry_keys:
-                if k in sig:
-                    try:
-                        sig["stop_loss"] = float(sig[k])
-                        break
-                    except:
-                        continue
-            else:
-                sig["stop_loss"] = None
-
             sym = sig.get("pair") or sig.get("symbol")
             tf_data = data_by_symbol.get(sym, {}).get("4H", {})
             raw_4h = raw_data_by_symbol.get(sym, {}).get("4H", [])
@@ -177,39 +125,45 @@ def run_block(block_name):
                 print(f"⚠️ Thiếu dữ liệu cho {sym} -> BỎ QUA")
                 continue
 
-            entry_1 = sig.get("entry_1")
-            entry_2 = sig.get("entry_2")
+            entry_keys = ["Entry 1", "Entry_1", "entry1", "entry_1"]
+            for k in entry_keys:
+                if k in sig:
+                    try:
+                        sig["entry_1"] = float(sig[k])
+                        break
+                    except:
+                        continue
+            else:
+                sig["entry_1"] = None
 
-            # Kiểm tra entry lệch quá xa giá hiện tại tùy theo hướng giao dịch -> loại bỏ
-            if entry_1 is None or current_price is None:
+            entry_1 = sig.get("entry_1")
+            if entry_1 is None:
                 print(f"⚠️ Thiếu dữ liệu entry hoặc giá hiện tại -> BỎ QUA {sym}")
                 continue
-            
-            if direction.lower() == "long":
-                if entry_1 > current_price * 1.1:
-                    print(f"⚠️ Entry LONG quá xa: entry={entry_1}, price={current_price} -> BỎ QUA {sym}")
-                    continue
-            elif direction.lower() == "short":
-                if entry_1 < current_price * 0.9:
-                    print(f"⚠️ Entry SHORT quá xa: entry={entry_1}, price={current_price} -> BỎ QUA {sym}")
-                    continue
-            else:
+
+            if direction.lower() == "long" and entry_1 > current_price * 1.1:
+                print(f"⚠️ Entry LONG quá xa: entry={entry_1}, price={current_price} -> BỎ QUA {sym}")
+                continue
+            elif direction.lower() == "short" and entry_1 < current_price * 0.9:
+                print(f"⚠️ Entry SHORT quá xa: entry={entry_1}, price={current_price} -> BỎ QUA {sym}")
+                continue
+            elif direction.lower() not in ["long", "short"]:
                 print(f"⚠️ Hướng giao dịch không rõ ràng: {direction} -> BỎ QUA {sym}")
                 continue
 
-
-            bb_lower = tf_data.get("bb_lower")
-            bb_upper = tf_data.get("bb_upper")
-            swing_low = min([c["low"] for c in raw_4h[-5:]]) if raw_4h else None
-            swing_high = max([c["high"] for c in raw_4h[-5:]]) if raw_4h else None
-
-            stop_loss = sig.get("stop_loss")
-            if not stop_loss:
+            stop_loss = None
+            for k in ["Stop loss", "Stop_loss", "stoploss", "stop_loss"]:
+                if k in sig:
+                    try:
+                        stop_loss = float(sig[k])
+                        break
+                    except:
+                        continue
+            if stop_loss is None:
                 print(f"⚠️ Không có Stop Loss từ GPT cho {sym} -> BỎ QUA")
                 continue
-            sig["stop_loss"] = float(stop_loss)
+            sig["stop_loss"] = stop_loss
 
-# Chuẩn hóa take_profits nếu được GPT trả về dưới dạng mảng hoặc dict
             if "take_profit" in sig and isinstance(sig["take_profit"], list):
                 for i, tp in enumerate(sig["take_profit"][:5]):
                     sig[f"tp{i+1}"] = tp
@@ -217,41 +171,33 @@ def run_block(block_name):
                 for i, tp in enumerate(sig["take_profits"][:5]):
                     sig[f"tp{i+1}"] = tp
 
-
+            tp1 = sig.get("tp1")
             rr_ratio = abs(entry_1 - stop_loss)
             if rr_ratio == 0:
                 print(f"⚠️ R:R không hợp lệ với {sym} -> BỎ QUA")
                 continue
-
-            tp1 = sig.get("tp1")
             if tp1:
                 rr_reward = abs(tp1 - entry_1)
-                rr = rr_reward / rr_ratio if rr_ratio != 0 else 0
+                rr = rr_reward / rr_ratio
                 if rr < 1.2:
                     print(f"⚠️ R:R quá thấp ({rr:.2f}) cho {sym} | entry: {entry_1}, sl: {stop_loss}, tp1: {tp1}")
                     continue
                 else:
                     print(f"✅ R:R = {rr:.2f} cho {sym}")
+            else:
+                print(f"⚠️ Không có TP1 cho {sym} -> BỎ QUA")
+                continue
 
-
-            supports = [lvl for _, lvl, t in sr_levels if t == "support"]
-            resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
-            trend_strength = tf_data.get("trend", "moderate")
-            confidence = sig.get("confidence", "medium")
-
-        # ✅ Sau tất cả kiểm tra đã qua
             try:
-                from telegram_bot import format_message
                 text = format_message(sig)
                 message_id = send_message(text)
                 sig["message_id"] = message_id
+                final_signals.append(sig)
             except Exception as e:
-                sym = sig.get("pair") or sig.get("symbol", "UNKNOWN")
                 print(f"❌ Lỗi khi gửi {sym} tới Telegram: {e}")
 
-
-        save_signals(signals, all_symbols, data_by_symbol)
-        save_active_signals(signals)
+        save_signals(final_signals, list(data_by_symbol.keys()), data_by_symbol)
+        save_active_signals(final_signals)
 
     except Exception as e:
         print(f"❌ Main error in {block_name}: {e}")
@@ -271,7 +217,6 @@ def main():
     else:
         for blk in BLOCKS:
             run_block(blk)
-
 
 if __name__ == "__main__":
     main()
