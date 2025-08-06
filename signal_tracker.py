@@ -26,15 +26,18 @@ def is_duplicate_signal(signal):
         with open("active_signals.json", "r") as f:
             active = json.load(f)
         for sig in active:
-            if (
-                sig.get("pair") == signal.get("pair") and
-                sig.get("direction", "").lower() == signal.get("direction", "").lower() and
-                sig.get("status") == "open"
-            ):
-                return True
-    except Exception as e:
-        print(f"⚠️ Lỗi khi kiểm tra trùng lặp: {e}")
+            if sig["pair"] == signal["pair"] and sig["status"] == "open":
+                # Nếu trùng hướng -> là duplicate
+                if sig["direction"].lower() == signal["direction"].lower():
+                    return True
+                # Nếu ngược hướng -> có thể là conflict (tuỳ bạn muốn reject hay cho qua)
+                else:
+                    print(f"⚠️ {signal['pair']} có tín hiệu mở theo hướng ngược lại ({sig['direction']} vs {signal['direction']})")
+                    return True  # hoặc False nếu bạn cho phép ngược hướng
+    except:
+        pass
     return False
+
 
 def check_signals():
     active_signals = load_active_signals()
