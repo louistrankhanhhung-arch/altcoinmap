@@ -42,12 +42,13 @@ Hãy đánh giá xem có cơ hội giao dịch không dựa trên xu hướng (T
 Các mức Entry, Stop Loss và Take Profit cần được xác định dựa trên các chỉ báo kỹ thuật như hỗ trợ/kháng cự, Bollinger Bands, MA và ATR. Tránh đặt Entry quá xa giá hiện tại. Stop Loss không nên quá gần. TP nên thực tế và có thể đạt được trong bối cảnh thị trường. Tỷ lệ R:R nên hợp lý, ví dụ 1:1.5 trở lên.
 Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau, ưu tiên đúng kỹ thuật và thực tế thị trường:
 
+Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY đúng định dạng sau, KHÔNG thêm ```json hoặc bất kỳ mô tả, ký tự nào khác:
 """
                 prompt += """
 {
   "symbol": "...",
   "direction": "Long hoặc Short",
-  "entry1": ...,
+  "entry1": ..., 
   "entry2": ...,  
   "stop_loss": ..., 
   "take_profits": [...],
@@ -57,8 +58,6 @@ Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau, ưu t
   "key_watch": "...",
   "nhan_dinh": "..."
 }
-
-⚠️ Chỉ trả về nội dung JSON thuần túy như mẫu trên, KHÔNG thêm ```json hoặc bất kỳ ký tự nào khác.
 """
 
                 now = datetime.now(UTC)
@@ -74,7 +73,13 @@ Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau, ưu t
 
                 reply = response.choices[0].message.content.strip()
                 print(f"📩 GPT raw reply for {symbol}:", reply)
-                parsed = parse_signal_response(reply)
+
+                # Strip leading/trailing non-json characters for safety
+                json_start = reply.find('{')
+                json_end = reply.rfind('}') + 1
+                cleaned = reply[json_start:json_end].strip()
+
+                parsed = parse_signal_response(cleaned)
 
                 if not parsed:
                     print(f"⚠️ GPT trả về định dạng không hợp lệ cho {symbol}.")
