@@ -180,6 +180,9 @@ def run_block(block_name):
                 if rr < 1.2:
                     print(f"⚠️ R:R quá thấp ({rr:.2f}) -> BỎ QUA {sym}")
                     continue
+                else:
+                    print(f"✅ R:R = {rr:.2f} cho {sym}")
+
 
             supports = [lvl for _, lvl, t in sr_levels if t == "support"]
             resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
