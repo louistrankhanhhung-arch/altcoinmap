@@ -52,7 +52,24 @@ Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau, ưu t
 - Key watch: mô tả điều kiện cần theo dõi thêm (ví dụ: kháng cự gần, RSI breakout, BB chạm biên,...)
 - Nhận định ngắn gọn về tín hiệu này bằng tiếng Việt (gợi ý hành động cụ thể và rủi ro nếu có).
 
-Chỉ trả về dữ liệu JSON.
+Chỉ trả về dữ liệu JSON với định dạng sau:
+
+{
+  "symbol": "AVAX/USDT",
+  "direction": "Long",
+  "entry1": 21.931,
+  "entry2": 21.5,
+  "stop_loss": 20.5,
+  "take_profits": [22.5, 23.0, 23.5],
+  "risk_level": "Medium",
+  "leverage": "3x",
+  "confidence": "medium",
+  "key_watch": "...",
+  "nhan_dinh": "..."
+}
+
+⚠️ `take_profits` phải là một danh sách các mức TP (tối đa 5) và được đặt tên đúng như vậy. KHÔNG dùng tp1, tp2, tp3,... riêng lẻ.
+
 """
 
                 now = datetime.now(UTC)
