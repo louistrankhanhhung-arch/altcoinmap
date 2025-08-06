@@ -101,7 +101,7 @@ def run_block(block_name):
                 }
             data_by_symbol[symbol] = enriched
 
-                suggested_tps_by_symbol = {}
+        suggested_tps_by_symbol = {}
         for symbol in data_by_symbol:
             tf_data = data_by_symbol[symbol].get("4H", {})
             direction = tf_data.get("trend", "sideways")
