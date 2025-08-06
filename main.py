@@ -127,15 +127,6 @@ def run_block(block_name):
                 print(f"⚠️ Đã có tín hiệu {sig['pair']} theo hướng {sig['direction']} đang mở -> BỎ QUA")
                 continue
 
-            try:
-                from telegram_bot import format_message
-                text = format_message(sig)
-                message_id = send_message(text)
-                sig["message_id"] = message_id
-            except Exception as e:
-                sym = sig.get("pair") or sig.get("symbol", "UNKNOWN")
-                print(f"❌ Lỗi khi gửi {sym} tới Telegram: {e}")
-
             # Entry 1
             entry_keys = ["Entry 1", "Entry_1", "entry1", "entry_1"]
             for k in entry_keys:
@@ -193,19 +184,19 @@ def run_block(block_name):
             if entry_1 is None or current_price is None:
                 print(f"⚠️ Thiếu dữ liệu entry hoặc giá hiện tại -> BỎ QUA {sym}")
                 continue
-
+            
             if direction.lower() == "long":
                 if entry_1 > current_price * 1.1:
-                    print(f"⚠️ Entry LONG quá xa giá hiện tại ({current_price}) -> BỎ QUA {sym}")
+                    print(f"⚠️ Entry LONG quá xa: entry={entry_1}, price={current_price} -> BỎ QUA {sym}")
                     continue
             elif direction.lower() == "short":
                 if entry_1 < current_price * 0.9:
-                    print(f"⚠️ Entry SHORT quá xa giá hiện tại ({current_price}) -> BỎ QUA {sym}")
+                    print(f"⚠️ Entry SHORT quá xa: entry={entry_1}, price={current_price} -> BỎ QUA {sym}")
                     continue
             else:
-                print(f"⚠️ Hướng giao dịch không rõ ràng -> BỎ QUA {sym}")
+                print(f"⚠️ Hướng giao dịch không rõ ràng: {direction} -> BỎ QUA {sym}")
                 continue
-            print(f"⚠️ Entry LONG quá xa: entry={entry_1}, price={current_price}")
+
 
             bb_lower = tf_data.get("bb_lower")
             bb_upper = tf_data.get("bb_upper")
@@ -247,6 +238,17 @@ def run_block(block_name):
             resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
             trend_strength = tf_data.get("trend", "moderate")
             confidence = sig.get("confidence", "medium")
+
+        # ✅ Sau tất cả kiểm tra đã qua
+            try:
+                from telegram_bot import format_message
+                text = format_message(sig)
+                message_id = send_message(text)
+                sig["message_id"] = message_id
+            except Exception as e:
+                sym = sig.get("pair") or sig.get("symbol", "UNKNOWN")
+                print(f"❌ Lỗi khi gửi {sym} tới Telegram: {e}")
+
 
         save_signals(signals, all_symbols, data_by_symbol)
         save_active_signals(signals)
