@@ -260,8 +260,16 @@ def main():
     now = datetime.now(UTC)
     print(f"\n⏰ [UTC {now.strftime('%Y-%m-%d %H:%M:%S')}] Running scheduled scan...")
 
-    for blk in BLOCKS:
-        run_block(blk)
+    if len(sys.argv) > 1:
+        block_name = sys.argv[1]
+        if block_name in BLOCKS:
+            run_block(block_name)
+        else:
+            print(f"❌ Block không hợp lệ: {block_name}")
+    else:
+        for blk in BLOCKS:
+            run_block(blk)
+
 
 if __name__ == "__main__":
     main()
