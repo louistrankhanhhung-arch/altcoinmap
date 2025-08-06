@@ -17,13 +17,13 @@ def parse_signal_response(reply):
             # Convert các trường số
             for k in ["entry_1", "entry_2", "stop_loss"]:
                 if k in result:
-                    result[k] = float(str(result[k]).replace(",", ""))
+                    result[k] = safe_float(result[k])
 
             result["tp"] = []
             for i in range(1, 6):
                 key = f"tp{i}"
                 if key in result:
-                    result["tp"].append(float(str(result[key]).replace(",", "")))
+                    result["tp"].append(safe_float(result[key]))
 
             # Đảm bảo có cả nhận định và mã giao dịch nếu có
             result["assessment"] = result.get("nhận_định", result.get("nhận_định_ngắn_gọn", result.get("assessment", "Không có đánh giá")))
@@ -79,3 +79,9 @@ def is_safe_dca(trend_4h, trend_1d):
         (trend_4h == "sideways" and trend_1d == "uptrend") or
         (trend_4h == "downtrend" and trend_1d == "sideways")
     )
+
+def safe_float(val):
+    try:
+        return float(str(val).replace(",", "")) if val not in [None, "None", "null", ""] else None
+    except:
+        return None
