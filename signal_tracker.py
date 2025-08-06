@@ -21,12 +21,15 @@ def save_active_signals(signals):
     with open(ACTIVE_FILE, "w") as f:
         json.dump(signals, f, indent=2)
 
-def is_duplicate_signal(new_sig):
-    active = load_active_signals()
-    for sig in active:
-        if sig["pair"] == new_sig["pair"] and sig.get("status", "open") == "open":
-            if sig["direction"].lower() == new_sig["direction"].lower():
+def is_duplicate_signal(signal):
+    try:
+        with open("active_signals.json", "r") as f:
+            active = json.load(f)
+        for sig in active:
+            if sig["pair"] == signal["pair"] and sig["direction"].lower() == signal["direction"].lower() and sig["status"] == "open":
                 return True
+    except:
+        pass
     return False
 
 def check_signals():
