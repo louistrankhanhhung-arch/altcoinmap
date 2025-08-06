@@ -188,7 +188,7 @@ def run_block(block_name):
             resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
             trend_strength = tf_data.get("trend", "moderate")
             confidence = sig.get("confidence", "medium")
-                        sig["strategy_type"] = label_strategy_type(sig)
+            sig["strategy_type"] = label_strategy_type(sig)
 
             from telegram_bot import format_message
             text = format_message(sig)
