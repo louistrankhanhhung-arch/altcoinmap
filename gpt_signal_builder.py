@@ -2,10 +2,10 @@ import os
 import openai
 from datetime import datetime, UTC
 from utils import parse_signal_response
-from indicators import generate_entries, generate_stop_loss
+
 
 # Gửi từng coin một với prompt có định dạng từ PROMPT_TEMPLATE
-async def get_gpt_signals(data_by_symbol):
+async def get_gpt_signals(data_by_symbol, suggested_tps_by_symbol):
     results = {}
 
     openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -32,6 +32,7 @@ Dưới đây là dữ liệu kỹ thuật của {symbol} theo từng khung th�
 {chr(10).join(summary_lines)}
 
 Giá hiện tại: {current_price}
+Các vùng Take Profit gợi ý theo kỹ thuật: {suggested_tps}
 Xu hướng 4H: {trend_4h}, xu hướng 1D: {trend_1d}
 
 Hãy đánh giá xem có cơ hội giao dịch không dựa trên xu hướng (Trend), lực nến, RSI, MA, Bollinger Bands. 
@@ -89,12 +90,10 @@ Chỉ trả về dữ liệu JSON.
                 sr_levels = tf_4h.get("sr_levels")
 
                 if direction and atr_val and ma20 and rsi and sr_levels:
-                    entry_1, entry_2 = generate_entries(tf_4h.get("close"), atr_val, direction, ma20, rsi, sr_levels)
-                    parsed["entry_1"] = entry_1
+                                        parsed["entry_1"] = entry_1
                     parsed["entry_2"] = entry_2
 
-                    parsed["stop_loss"] = generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_high, atr_val, entry_2)
-
+                    
                 results[symbol] = parsed
 
             except Exception as e:
