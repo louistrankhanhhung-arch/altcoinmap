@@ -173,6 +173,14 @@ def run_block(block_name):
                 print(f"⚠️ R:R không hợp lệ với {sym} -> BỎ QUA")
                 continue
 
+            tp1 = sig.get("tp1")
+            if tp1:
+                rr_reward = abs(tp1 - entry_1)
+                rr = rr_reward / rr_ratio if rr_ratio != 0 else 0
+                if rr < 1.2:
+                    print(f"⚠️ R:R quá thấp ({rr:.2f}) -> BỎ QUA {sym}")
+                    continue
+
             supports = [lvl for _, lvl, t in sr_levels if t == "support"]
             resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
             trend_strength = tf_data.get("trend", "moderate")
