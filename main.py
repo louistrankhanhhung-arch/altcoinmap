@@ -125,21 +125,18 @@ def run_block(block_name):
                 print(f"⚠️ Thiếu dữ liệu cho {sym} -> BỎ QUA")
                 continue
 
-            entry_keys = ["Entry 1", "Entry_1", "entry1", "entry_1"]
-            for k in entry_keys:
-                if k in sig:
-                    try:
-                        sig["entry_1"] = float(sig[k])
-                        break
-                    except:
-                        continue
-            else:
-                sig["entry_1"] = None
-
-            entry_1 = sig.get("entry_1")
+            entry_1 = sig.get("entry_1") or sig.get("entry1")
             if entry_1 is None:
                 print(f"⚠️ Thiếu dữ liệu entry hoặc giá hiện tại -> BỎ QUA {sym}")
                 continue
+
+            try:
+                entry_1 = float(entry_1)
+            except:
+                print(f"⚠️ Entry không hợp lệ -> BỎ QUA {sym}")
+                continue
+
+            sig["entry_1"] = entry_1
 
             if direction.lower() == "long" and entry_1 > current_price * 1.1:
                 print(f"⚠️ Entry LONG quá xa: entry={entry_1}, price={current_price} -> BỎ QUA {sym}")
@@ -151,24 +148,18 @@ def run_block(block_name):
                 print(f"⚠️ Hướng giao dịch không rõ ràng: {direction} -> BỎ QUA {sym}")
                 continue
 
-            stop_loss = None
-            for k in ["Stop loss", "Stop_loss", "stoploss", "stop_loss"]:
-                if k in sig:
-                    try:
-                        stop_loss = float(sig[k])
-                        break
-                    except:
-                        continue
-            if stop_loss is None:
-                print(f"⚠️ Không có Stop Loss từ GPT cho {sym} -> BỎ QUA")
+            stop_loss = sig.get("stop_loss") or sig.get("StopLoss") or sig.get("stoploss")
+            try:
+                stop_loss = float(stop_loss)
+            except:
+                print(f"⚠️ Không có Stop Loss hợp lệ từ GPT cho {sym} -> BỎ QUA")
                 continue
+
             sig["stop_loss"] = stop_loss
 
-            if "take_profit" in sig and isinstance(sig["take_profit"], list):
-                for i, tp in enumerate(sig["take_profit"][:5]):
-                    sig[f"tp{i+1}"] = tp
-            elif "take_profits" in sig and isinstance(sig["take_profits"], list):
-                for i, tp in enumerate(sig["take_profits"][:5]):
+            tps = sig.get("take_profits") or sig.get("take_profit")
+            if isinstance(tps, list):
+                for i, tp in enumerate(tps[:5]):
                     sig[f"tp{i+1}"] = tp
 
             tp1 = sig.get("tp1")
