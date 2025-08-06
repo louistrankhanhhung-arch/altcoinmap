@@ -185,7 +185,6 @@ def run_block(block_name):
             resistances = [lvl for _, lvl, t in sr_levels if t == "resistance"]
             trend_strength = tf_data.get("trend", "moderate")
             confidence = sig.get("confidence", "medium")
-            sig["strategy_type"] = label_strategy_type(sig)
 
         save_signals(signals, all_symbols, data_by_symbol)
         save_active_signals(signals)
