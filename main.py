@@ -59,19 +59,6 @@ def detect_candle_signal(candles):
         return "doji"
     return "none"
 
-def label_strategy_type(signal):
-    try:
-        e1 = signal.get("entry_1")
-        e2 = signal.get("entry_2")
-        direction = signal.get("direction", "").lower()
-        if direction == "long" and e1 and e2:
-            return "dca" if e1 > e2 else "scale_in"
-        elif direction == "short" and e1 and e2:
-            return "dca" if e1 < e2 else "scale_in"
-    except:
-        pass
-    return "unknown"
-
 def run_block(block_name):
     symbols = BLOCKS.get(block_name)
     if not symbols:
