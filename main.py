@@ -148,21 +148,23 @@ def run_block(block_name):
             entry_1 = sig.get("entry_1")
             entry_2 = sig.get("entry_2")
 
-            # Kiểm tra entry lệch quá 10% tùy theo hướng giao dịch -> loại bỏ
-            if direction.lower() == "long" and entry_1 is not None and current_price is not None and entry_1 > current_price * 1.1:
-                print(f"⚠️ Entry LONG quá xa giá hiện tại ({current_price}) -> BỎ QUA {sym}")
-                continue
-            elif direction.lower() == "short" and entry_1 is not None and current_price is not None and entry_1 < current_price * 0.9:
-                print(f"⚠️ Entry SHORT quá xa giá hiện tại ({current_price}) -> BỎ QUA {sym}")
+            # Kiểm tra entry lệch quá xa giá hiện tại tùy theo hướng giao dịch -> loại bỏ
+            if entry_1 is None or current_price is None:
+                print(f"⚠️ Thiếu dữ liệu entry hoặc giá hiện tại -> BỎ QUA {sym}")
                 continue
 
-            if entry_1 is None or current_price is None or abs(entry_1 - current_price) / current_price > 0.1:
-                print(f"⚠️ Entry 1 lệch quá xa giá hiện tại ({current_price}) -> BỎ QUA {sym}")
+            if direction.lower() == "long":
+                if entry_1 > current_price * 1.1:
+                    print(f"⚠️ Entry LONG quá xa giá hiện tại ({current_price}) -> BỎ QUA {sym}")
+                    continue
+            elif direction.lower() == "short":
+                if entry_1 < current_price * 0.9:
+                    print(f"⚠️ Entry SHORT quá xa giá hiện tại ({current_price}) -> BỎ QUA {sym}")
+                    continue
+            else:
+                print(f"⚠️ Hướng giao dịch không rõ ràng -> BỎ QUA {sym}")
                 continue
-
-            if not entry_1 or not entry_2:
-                print(f"⚠️ Không có entry từ GPT cho {sym} -> BỎ QUA")
-                continue
+            print(f"⚠️ Entry LONG quá xa: entry={entry_1}, price={current_price}")
 
             bb_lower = tf_data.get("bb_lower")
             bb_upper = tf_data.get("bb_upper")
