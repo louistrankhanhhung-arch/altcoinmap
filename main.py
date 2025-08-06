@@ -87,7 +87,15 @@ def run_block(block_name):
                     **candles[-1]
                 }
             data_by_symbol[symbol] = enriched
+            
+            trend_1h = enriched.get("1H", {}).get("trend", "unknown")
+            trend_4h = enriched.get("4H", {}).get("trend", "unknown")
+            trend_1d = enriched.get("1D", {}).get("trend", "unknown")
 
+            if trend_1h == trend_4h == trend_1d == "sideways":
+                print(f"⚠️ {symbol} có cả 3 khung thời gian đều sideways -> BỎ QUA")
+                continue
+                
         suggested_tps_by_symbol = {}
         for symbol in data_by_symbol:
             tf_data = data_by_symbol[symbol].get("4H", {})
@@ -106,6 +114,10 @@ def run_block(block_name):
         all_symbols = list(data_by_symbol.keys())
 
         for sig in signals:
+            if is_duplicate_signal(sig):
+                print(f"⚠️ Đã có tín hiệu {sig['pair']} theo hướng {sig['direction']} đang mở -> BỎ QUA")
+                continue
+
             try:
                 from telegram_bot import format_message
                 text = format_message(sig)
