@@ -1,6 +1,7 @@
 import os
 import openai
 from datetime import datetime, UTC
+import json
 from utils import parse_signal_response
 
 
@@ -26,6 +27,8 @@ async def get_gpt_signals(data_by_symbol, suggested_tps_by_symbol):
                 trend_1d = tf_data.get("1D", {}).get("trend", "unknown")
                 suggested_tps = suggested_tps_by_symbol.get(symbol, [])
 
+                json_tps = json.dumps(suggested_tps, ensure_ascii=False)
+
                 prompt = f"""
 Bạn là một trợ lý giao dịch crypto chuyên nghiệp.
 Dưới đây là dữ liệu kỹ thuật của {symbol} theo từng khung thời gian:
@@ -33,7 +36,7 @@ Dưới đây là dữ liệu kỹ thuật của {symbol} theo từng khung th�
 {chr(10).join(summary_lines)}
 
 Giá hiện tại: {current_price}
-Các vùng Take Profit gợi ý theo kỹ thuật: {suggested_tps}
+Các vùng Take Profit gợi ý theo kỹ thuật: {json_tps}
 Xu hướng 4H: {trend_4h}, xu hướng 1D: {trend_1d}
 
 Hãy đánh giá xem có cơ hội giao dịch không dựa trên xu hướng (Trend), lực nến, RSI, MA, Bollinger Bands. 
@@ -54,7 +57,7 @@ Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau, ưu t
 
 Chỉ trả về dữ liệu JSON với định dạng sau:
 
-{
+{{
   "symbol": "AVAX/USDT",
   "direction": "Long",
   "entry1": 21.931,
@@ -66,7 +69,7 @@ Chỉ trả về dữ liệu JSON với định dạng sau:
   "confidence": "medium",
   "key_watch": "...",
   "nhan_dinh": "..."
-}
+}}
 
 ⚠️ `take_profits` phải là một danh sách các mức TP (tối đa 5) và được đặt tên đúng như vậy. KHÔNG dùng tp1, tp2, tp3,... riêng lẻ.
 
@@ -105,7 +108,7 @@ Chỉ trả về dữ liệu JSON với định dạng sau:
                 ma20 = tf_4h.get("ma20")
                 rsi = tf_4h.get("rsi")
                 sr_levels = tf_4h.get("sr_levels")
-                    
+
                 results[symbol] = parsed
 
             except Exception as e:
