@@ -236,9 +236,9 @@ def run_block(block_name):
             try:
                 if sig.get("resignal"):
                     sig["assessment"] = "Resignal - tín hiệu mở rộng"
-    
-    # 📌 đánh dấu cho Telegram
-text = format_message(sig)
+
+                # 📌 đánh dấu cho Telegram
+                text = format_message(sig)
                 message_id = send_message(text)
                 sig["message_id"] = message_id
                 final_signals.append(sig)
