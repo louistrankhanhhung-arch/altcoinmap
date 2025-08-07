@@ -13,6 +13,12 @@ async def get_gpt_signals(data_by_symbol, suggested_tps_by_symbol):
     async with openai.AsyncOpenAI() as client:
         for symbol, tf_data in data_by_symbol.items():
             try:
+                # Chỉ tạo tín hiệu nếu nến 4H đã đóng
+                current_time = datetime.now(UTC)
+                if current_time.hour % 4 != 0:
+                    print(f"⏳ Bỏ qua {symbol} vì nến 4H chưa đóng.")
+                    continue
+
                 summary_lines = []
                 for tf in ["1H", "4H", "1D"]:
                     item = tf_data.get(tf, {})
@@ -22,8 +28,11 @@ async def get_gpt_signals(data_by_symbol, suggested_tps_by_symbol):
                         )
 
                 current_price = tf_data.get("4H", {}).get("close", "N/A")
+                trend_1h = tf_data.get("1H", {}).get("trend", "unknown")
                 trend_4h = tf_data.get("4H", {}).get("trend", "unknown")
                 trend_1d = tf_data.get("1D", {}).get("trend", "unknown")
+                rsi_4h = tf_data.get("4H", {}).get("rsi")
+                bb_width_4h = tf_data.get("4H", {}).get("bb_upper", 0) - tf_data.get("4H", {}).get("bb_lower", 0)
                 suggested_tps = suggested_tps_by_symbol.get(symbol, [])
 
                 json_tps = json.dumps(suggested_tps, ensure_ascii=False)
@@ -36,11 +45,13 @@ Dưới đây là dữ liệu kỹ thuật của {symbol} theo từng khung th�
 
 Giá hiện tại: {current_price}
 Các vùng Take Profit gợi ý theo kỹ thuật: {json_tps}
-Xu hướng 4H: {trend_4h}, xu hướng 1D: {trend_1d}
 
-Hãy đánh giá xem có cơ hội giao dịch không dựa trên xu hướng (Trend), lực nến, RSI, MA, Bollinger Bands. 
-Các mức Entry, Stop Loss và Take Profit cần được xác định dựa trên các chỉ báo kỹ thuật như hỗ trợ/kháng cự, Bollinger Bands, MA và ATR. Tránh đặt Entry quá xa giá hiện tại. Stop Loss không nên quá gần. TP nên thực tế và có thể đạt được trong bối cảnh thị trường. Tỷ lệ R:R nên hợp lý, ví dụ 1:1.5 trở lên.
-Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau, ưu tiên đúng kỹ thuật và thực tế thị trường.
+Xu hướng 1H: {trend_1h}, xu hướng 4H: {trend_4h}, xu hướng 1D: {trend_1d}, RSI 4H: {rsi_4h}
+
+Hãy đánh giá xem có cơ hội giao dịch không dựa trên sự đồng thuận giữa các khung thời gian, RSI, Bollinger Bands và lực nến.
+
+- Nếu không rõ xu hướng hoặc khung 4H chưa thực sự break, KHÔNG đề xuất giao dịch.
+- Nếu có tín hiệu, hãy phân loại: "trend-follow", "technical bounce", "trap setup" hoặc "breakout anticipation".
 
 Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` hoặc bất kỳ chú thích, văn bản mô tả nào bên ngoài JSON. Định dạng bắt buộc:
 {{
@@ -53,6 +64,7 @@ Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` ho�
   "risk_level": "Low / Medium / High",
   "leverage": "3x / 5x / 10x",
   "confidence": "high / medium / low",
+  "strategy_type": "trend-follow / technical bounce / trap setup / breakout anticipation",
   "key_watch": "Kháng cự gần 12500, chờ xác nhận breakout",
   "nhan_dinh": "Tín hiệu Long theo xu hướng, lực nến mạnh, nên chờ retest entry"
 }}
@@ -90,19 +102,6 @@ Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` ho�
                     continue
 
                 parsed["pair"] = symbol
-
-                # Lấy các thông số kỹ thuật để tự động tính SL nếu cần
-                direction = parsed.get("direction")
-                tf_4h = tf_data.get("4H", {})
-                entry_1 = parsed.get("entry_1")
-                bb_lower = tf_4h.get("bb_lower")
-                bb_upper = tf_4h.get("bb_upper")
-                swing_low = tf_4h.get("low")
-                swing_high = tf_4h.get("high")
-                atr_val = tf_4h.get("atr")
-                ma20 = tf_4h.get("ma20")
-                rsi = tf_4h.get("rsi")
-                sr_levels = tf_4h.get("sr_levels")
 
                 results[symbol] = parsed
 
