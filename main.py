@@ -67,7 +67,16 @@ def detect_candle_signal(candles):
         return "doji"
     return "none"
 
+TEST_MODE = True  # Set to False to enforce 4H candle closure time
+
 def run_block(block_name):
+    if not TEST_MODE:
+        current_time = datetime.now(UTC)
+        if current_time.hour % 4 != 0:
+            print(f"⏸ Bỏ qua block {block_name} vì chưa đến thời điểm đóng nến 4H")
+            return
+    else:
+        print(f"⏳ [TEST MODE] Bỏ qua kiểm tra giờ, luôn chạy block {block_name}")
     current_time = datetime.now(UTC)
     if current_time.hour % 4 != 0:
         print(f"⏸ Bỏ qua block {block_name} vì chưa đến thời điểm đóng nến 4H")
