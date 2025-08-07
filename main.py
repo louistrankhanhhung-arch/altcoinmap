@@ -8,8 +8,8 @@ from gpt_signal_builder import get_gpt_signals, BLOCKS
 from kucoin_api import fetch_coin_data
 from telegram_bot import send_message, format_message
 from signal_logger import save_signals
-from signal_tracker import resolve_duplicate_signal
 from indicators import compute_indicators, generate_suggested_tps
+from signal_tracker import resolve_duplicate_signal
 
 ACTIVE_FILE = "active_signals.json"
 
@@ -47,7 +47,6 @@ def classify_trend(candles):
     price = candles[-1]["close"]
     ma20 = candles[-1]["ma20"]
     ma50 = candles[-1]["ma50"]
-
     if ma20 and ma50:
         if price > ma20 > ma50:
             return "uptrend"
@@ -69,38 +68,6 @@ def detect_candle_signal(candles):
     elif abs(c2["close"] - c2["open"]) < (c2["high"] - c2["low"]) * 0.1:
         return "doji"
     return "none"
-
-
-
-def resolve_duplicate_signal(signal):
-    try:
-        with open("active_signals.json", "r") as f:
-            active = json.load(f)
-        updated = []
-        reversed_any = False
-        for sig in active:
-            if sig["pair"] == signal["pair"] and sig["status"] == "open":
-                if sig["direction"].lower() != signal["direction"].lower():
-                    sig["status"] = "reversed"
-                    sig["reversed_at"] = datetime.utcnow().isoformat()
-                    send_message(f"↩️ <b>{sig['pair']}</b> đã đảo chiều. Lệnh {sig['direction']} bị huỷ.")
-                    reversed_any = True
-                else:
-                    # Cùng hướng ➜ đánh dấu resignal và gộp TP
-                    signal["resignal"] = True
-                    old_tps = sig.get("tp", [])
-                    new_tps = signal.get("tp", [])
-                    if isinstance(old_tps, list) and isinstance(new_tps, list):
-                        merged = sorted(set(old_tps + new_tps))[:5]
-                        signal["tp"] = merged
-                        signal["merged_from"] = sig.get("message_id")
-        if reversed_any:
-            with open("active_signals.json", "w") as f:
-                json.dump(updated, f, indent=2)
-        return False  # Cho phép tạo tín hiệu mới
-    except Exception as e:
-        print("⚠️ Lỗi khi xử lý duplicate:", e)
-        return False
 
 def run_block(block_name):
     if TEST_MODE:
@@ -158,7 +125,6 @@ def run_block(block_name):
         print("📊 Sending to GPT...")
         signals_dict = asyncio.run(get_gpt_signals(data_by_symbol, suggested_tps_by_symbol, test_mode=TEST_MODE))
         signals = list(signals_dict.values())
-        signals = [s for s in signals_dict.values() if not resolve_duplicate_signal(s)]
         print(f"✅ Số tín hiệu hợp lệ sau lọc: {len(signals)}")
 
         final_signals = []
@@ -200,7 +166,7 @@ def run_block(block_name):
 
             sig["stop_loss"] = stop_loss
 
-            tps = sig.get("take_profits") or sig.get("take_profit")
+            tps = sig.get("take_profits") or sig.get("take_profit") or sig.get("tp")
             if isinstance(tps, str):
                 try:
                     tps = json.loads(tps)
@@ -209,19 +175,19 @@ def run_block(block_name):
                         tps = [float(x.strip()) for x in tps.strip('[]').split(',') if x.strip()]
                     except:
                         print(f"⚠️ Không thể chuyển đổi TP cho {sym}, bỏ qua")
+                        sig["tp"] = []
                         continue
 
             if isinstance(tps, list):
-                tps_clean = [safe_float(tp_val) for tp_val in tps[:5]]
+                tps_clean = [safe_float(tp) for tp in tps[:5]]
                 for i, tp_val in enumerate(tps_clean):
                     sig[f"tp{i+1}"] = tp_val
-                sig["tp"] = tps_clean  # Ghi đè để format_message dùng đúng
+                sig["tp"] = tps_clean
             else:
-                sig["tp"] = []  # Đảm bảo không dùng giá trị cũ nếu không parse được
+                sig["tp"] = []
 
             tp_list = sig.get("tp", [])
             tp1 = safe_float(tp_list[0]) if isinstance(tp_list, list) and len(tp_list) > 0 else None
-
 
             rr_ratio = abs(entry_1 - stop_loss)
             if rr_ratio == 0:
@@ -239,12 +205,8 @@ def run_block(block_name):
                 print(f"⚠️ Không có TP1 cho {sym} -> BỎ QUA")
                 continue
 
+            sig = resolve_duplicate_signal(sig)
             try:
-                if sig.get("resignal"):
-                    sig["assessment"] = "Resignal - tín hiệu mở rộng"
-    
-    # 📌 đánh dấu cho Telegram
-                resolve_duplicate_signal(sig)
                 text = format_message(sig)
                 message_id = send_message(text)
                 sig["message_id"] = message_id
