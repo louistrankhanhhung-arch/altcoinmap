@@ -9,4 +9,4 @@ for block in blocks:
         subprocess.run(["python", "main.py", block], check=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ Lỗi khi chạy {block}: {e}")
-    time.sleep(5 * 60)  # nghỉ 5 phút giữa các block
+    time.sleep(60)  # nghỉ 5 phút giữa các block
