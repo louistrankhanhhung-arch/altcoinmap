@@ -2,6 +2,7 @@ import sys
 import json
 import traceback
 import asyncio
+import time
 from datetime import datetime, UTC
 from gpt_signal_builder import get_gpt_signals, BLOCKS
 from kucoin_api import fetch_coin_data
@@ -13,6 +14,8 @@ from signal_tracker import is_duplicate_signal
 ACTIVE_FILE = "active_signals.json"
 
 TF_MAP = {"1H": "1hour", "4H": "4hour", "1D": "1day"}
+
+TEST_MODE = True  # Set to False to enforce 4H candle closure
 
 def safe_float(val):
     try:
@@ -67,20 +70,15 @@ def detect_candle_signal(candles):
         return "doji"
     return "none"
 
-TEST_MODE = True  # Set to False to enforce 4H candle closure time
-
 def run_block(block_name):
-    if not TEST_MODE:
+    if TEST_MODE:
+        print(f"⏳ [TEST MODE] Bỏ qua kiểm tra giờ, luôn chạy block {block_name}")
+    else:
         current_time = datetime.now(UTC)
         if current_time.hour % 4 != 0:
             print(f"⏸ Bỏ qua block {block_name} vì chưa đến thời điểm đóng nến 4H")
             return
-    else:
-        print(f"⏳ [TEST MODE] Bỏ qua kiểm tra giờ, luôn chạy block {block_name}")
-    current_time = datetime.now(UTC)
-    if current_time.hour % 4 != 0:
-        print(f"⏸ Bỏ qua block {block_name} vì chưa đến thời điểm đóng nến 4H")
-        return
+
     symbols = BLOCKS.get(block_name)
     if not symbols:
         print(f"❌ Block không hợp lệ: {block_name}")
@@ -233,6 +231,8 @@ def main():
     else:
         for blk in BLOCKS:
             run_block(blk)
+            print("⏳ Đợi 60 giây trước khi chạy block tiếp theo...")
+            time.sleep(60)
 
 if __name__ == "__main__":
     main()
