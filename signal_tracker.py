@@ -50,7 +50,7 @@ def check_signals():
                 if not (min(entry_1, entry_2) <= price <= max(entry_1, entry_2)):
                     signal["status"] = "timeout"
                     if message_id:
-    send_message(f"⚠️ <b>{pair}</b> đã timeout sau 12 giờ không vào lệnh.", reply_to_id=message_id)
+        send_message(f"⚠️ <b>{pair}</b> đã timeout sau 12 giờ không vào lệnh.", reply_to_id=message_id)
 else:
     send_message(f"⚠️ <b>{pair}</b> đã timeout sau 12 giờ không vào lệnh.")
                     updated_signals.append(signal)
@@ -59,7 +59,7 @@ else:
             if (direction == "long" and price <= sl) or (direction == "short" and price >= sl):
                 signal["status"] = "stopped"
                 if message_id:
-    send_message(f"🛑 <b>{pair}</b> đã hit Stop Loss ở {price:,.2f}", reply_to_id=message_id)
+        send_message(f"🛑 <b>{pair}</b> đã hit Stop Loss ở {price:,.2f}", reply_to_id=message_id)
 else:
     send_message(f"🛑 <b>{pair}</b> đã hit Stop Loss ở {price:,.2f}")
                 updated_signals.append(signal)
@@ -84,7 +84,7 @@ else:
                 if (direction == "long" and price >= tp) or (direction == "short" and price <= tp):
                     hit_tp.append(i+1)
                     if message_id:
-    send_message(f"✅ <b>{pair}</b> đã đạt TP{i+1} ở {price:,.2f}", reply_to_id=message_id)
+        send_message(f"✅ <b>{pair}</b> đã đạt TP{i+1} ở {price:,.2f}", reply_to_id=message_id)
 else:
     send_message(f"✅ <b>{pair}</b> đã đạt TP{i+1} ở {price:,.2f}")
                     tp_hit = True
@@ -94,7 +94,7 @@ else:
                 if len(hit_tp) == len(tps):
                     signal["status"] = "closed"
                     if message_id:
-    send_message(f"🎯 <b>{pair}</b> đã hoàn thành tất cả mục tiêu và đóng lệnh.", reply_to_id=message_id)
+        send_message(f"🎯 <b>{pair}</b> đã hoàn thành tất cả mục tiêu và đóng lệnh.", reply_to_id=message_id)
 else:
     send_message(f"🎯 <b>{pair}</b> đã hoàn thành tất cả mục tiêu và đóng lệnh.")
 
