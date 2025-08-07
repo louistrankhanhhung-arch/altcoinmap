@@ -25,7 +25,10 @@ def parse_signal_response(reply):
         result["pair"] = result.get("symbol", result.get("pair", "UNKNOWN"))
 
         # Check required fields
-        required_fields = ["entry_1", "stop_loss", "tp"]
+        required_fields = ["entry_1", "stop_loss"]
+        if not isinstance(result.get("tp"), list) or len(result["tp"]) == 0:
+            print(f"⚠️ Trường tp không hợp lệ hoặc rỗng -> BỎ QUA")
+            return None
         if all(result.get(f) for f in required_fields) and isinstance(result["tp"], list) and len(result["tp"]) > 0:
             return result
         else:
