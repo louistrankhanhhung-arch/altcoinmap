@@ -211,16 +211,16 @@ def run_block(block_name):
                         print(f"⚠️ Không thể chuyển đổi TP cho {sym}, bỏ qua")
                         continue
 
-           if isinstance(tps, list):
-               tps_clean = [safe_float(tp) for tp in tps[:5]]
-               for i, tp in enumerate(tps_clean):
-                   sig[f"tp{i+1}"] = tp
-               sig["tp"] = tps_clean  # Ghi đè để format_message dùng đúng
-           else:
-               sig["tp"] = []  # Đảm bảo không dùng giá trị cũ nếu không parse được
+            if isinstance(tps, list):
+                tps_clean = [safe_float(tp_val) for tp_val in tps[:5]]
+                for i, tp_val in enumerate(tps_clean):
+                    sig[f"tp{i+1}"] = tp_val
+                sig["tp"] = tps_clean  # Ghi đè để format_message dùng đúng
+            else:
+                sig["tp"] = []  # Đảm bảo không dùng giá trị cũ nếu không parse được
 
-           tp_list = sig.get("tp", [])
-           tp1 = safe_float(tp_list[0]) if isinstance(tp_list, list) and len(tp_list) > 0 else None
+            tp_list = sig.get("tp", [])
+            tp1 = safe_float(tp_list[0]) if isinstance(tp_list, list) and len(tp_list) > 0 else None
 
 
             rr_ratio = abs(entry_1 - stop_loss)
