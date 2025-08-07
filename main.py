@@ -9,7 +9,6 @@ from kucoin_api import fetch_coin_data
 from telegram_bot import send_message, format_message
 from signal_logger import save_signals
 from indicators import compute_indicators, generate_suggested_tps
-from signal_tracker import is_duplicate_signal
 
 ACTIVE_FILE = "active_signals.json"
 
