@@ -125,7 +125,6 @@ def run_block(block_name):
         print("📊 Sending to GPT...")
         signals_dict = asyncio.run(get_gpt_signals(data_by_symbol, suggested_tps_by_symbol, test_mode=TEST_MODE))
         signals = list(signals_dict.values())
-        signals = [s for s in signals if not is_duplicate_signal(s)]
         print(f"✅ Số tín hiệu hợp lệ sau lọc: {len(signals)}")
 
         final_signals = []
