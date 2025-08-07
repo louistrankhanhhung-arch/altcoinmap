@@ -21,23 +21,6 @@ def save_active_signals(signals):
     with open(ACTIVE_FILE, "w") as f:
         json.dump(signals, f, indent=2)
 
-def is_duplicate_signal(signal):
-    try:
-        with open("active_signals.json", "r") as f:
-            active = json.load(f)
-        for sig in active:
-            if sig["pair"] == signal["pair"] and sig["status"] == "open":
-                # Nếu trùng hướng -> là duplicate
-                if sig["direction"].lower() == signal["direction"].lower():
-                    return True
-                # Nếu ngược hướng -> có thể là conflict (tuỳ bạn muốn reject hay cho qua)
-                else:
-                    print(f"⚠️ {signal['pair']} có tín hiệu mở theo hướng ngược lại ({sig['direction']} vs {signal['direction']})")
-                    return True  # hoặc False nếu bạn cho phép ngược hướng
-    except:
-        pass
-    return False
-
 
 def check_signals():
     active_signals = load_active_signals()
