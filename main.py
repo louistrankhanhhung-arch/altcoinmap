@@ -235,7 +235,7 @@ def run_block(block_name):
 
             try:
                 if sig.get("resignal"):
-    sig["assessment"] = "Resignal - tín hiệu mở rộng"
+                    sig["assessment"] = "Resignal - tín hiệu mở rộng"
     
     # 📌 đánh dấu cho Telegram
 text = format_message(sig)
