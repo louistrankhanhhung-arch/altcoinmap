@@ -29,7 +29,14 @@ def parse_signal_response(reply):
             result["assessment"] = result.get("nhận_định", result.get("nhận_định_ngắn_gọn", result.get("assessment", "Không có đánh giá")))
             result["pair"] = result.get("symbol", result.get("pair", "UNKNOWN"))
 
-            return result if "entry_1" in result and "stop_loss" in result and result["tp"] else None
+            # Kiểm tra định dạng hợp lệ
+            required_fields = ["entry_1", "stop_loss", "tp"]
+            if all(result.get(f) for f in required_fields):
+                return result
+            else:
+                print(f"⚠️ Dữ liệu thiếu trường bắt buộc: {required_fields} -> BỎ QUA")
+                return None
+
         except json.JSONDecodeError:
             pass  # fallback nếu không phải JSON chuẩn
 
@@ -46,17 +53,11 @@ def parse_signal_response(reply):
 
             # Parse các trường số
             if key in ["entry_1", "entry_2", "stop_loss"]:
-                try:
-                    result[key] = float(val.replace(",", ""))
-                except:
-                    pass
+                result[key] = safe_float(val)
             elif key.startswith("tp"):
-                try:
-                    if "tp" not in result:
-                        result["tp"] = []
-                    result["tp"].append(float(val.replace(",", "")))
-                except:
-                    pass
+                if "tp" not in result:
+                    result["tp"] = []
+                result["tp"].append(safe_float(val))
             else:
                 result[key] = val
 
@@ -64,11 +65,12 @@ def parse_signal_response(reply):
         result["pair"] = result.get("symbol", result.get("pair", "UNKNOWN"))
 
         required_fields = ["entry_1", "stop_loss", "tp"]
-        for field in required_fields:
-            if field not in result or not result[field]:
-                return None
+        if all(result.get(f) for f in required_fields):
+            return result
+        else:
+            print(f"⚠️ Dữ liệu fallback thiếu trường bắt buộc: {required_fields} -> BỎ QUA")
+            return None
 
-        return result
     except Exception as e:
         print(f"❌ Error parsing GPT response: {e}")
         return None
