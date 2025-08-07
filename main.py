@@ -158,9 +158,19 @@ def run_block(block_name):
             sig["stop_loss"] = stop_loss
 
             tps = sig.get("take_profits") or sig.get("take_profit")
+            if isinstance(tps, str):
+                try:
+                    tps = json.loads(tps)
+                except:
+                    try:
+                        tps = [float(x.strip()) for x in tps.strip('[]').split(',') if x.strip()]
+                    except:
+                        print(f"⚠️ Không thể chuyển đổi TP cho {sym}, bỏ qua")
+                        continue
+
             if isinstance(tps, list):
                 for i, tp in enumerate(tps[:5]):
-                    sig[f"tp{i+1}"] = tp
+                    sig[f"tp{i+1}"] = safe_float(tp)
 
             tp1 = sig.get("tp1")
             rr_ratio = abs(entry_1 - stop_loss)
