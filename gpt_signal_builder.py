@@ -13,7 +13,7 @@ async def get_gpt_signals(data_by_symbol, suggested_tps_by_symbol, test_mode=Fal
     async with openai.AsyncOpenAI() as client:
         for symbol, tf_data in data_by_symbol.items():
             try:
-                                if not test_mode:
+                if not test_mode:
                     current_time = datetime.now(UTC)
                     if current_time.hour % 4 != 0:
                         print(f"⏳ Bỏ qua {symbol} vì nến 4H chưa đóng.")
