@@ -172,7 +172,9 @@ def run_block(block_name):
                 for i, tp in enumerate(tps[:5]):
                     sig[f"tp{i+1}"] = safe_float(tp)
 
-            tp1 = sig.get("tp1")
+            tp = sig.get("tp", [])
+            tp1 = tp[0] if isinstance(tp, list) and len(tp) > 0 else None
+
             rr_ratio = abs(entry_1 - stop_loss)
             if rr_ratio == 0:
                 print(f"⚠️ R:R không hợp lệ với {sym} -> BỎ QUA")
