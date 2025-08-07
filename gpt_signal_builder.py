@@ -44,7 +44,7 @@ Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau, ưu t
 
 Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` hoặc bất kỳ chú thích, văn bản mô tả nào bên ngoài JSON. Định dạng bắt buộc:
 """
-prompt += """
+                prompt += """
 {
   "symbol": "BTC/USDT",
   "direction": "Long hoặc Short",
@@ -60,14 +60,13 @@ prompt += """
 }
 """
 
-prompt += """
+                prompt += """
 ⚠️ Lưu ý kỹ:
 - Chỉ trả về JSON đúng chuẩn như trên, KHÔNG thêm bất kỳ ký tự lạ, mô tả hay định dạng markdown nào.
 - Các trường `entry1`, `entry2`, `stop_loss`, `take_profits` PHẢI là số (float), KHÔNG để trong ngoặc kép.
 - `take_profits` phải là một danh sách các số (mảng số thực).
 - Không được thiếu bất kỳ trường nào trong JSON trên.
 """
-
 
                 now = datetime.now(UTC)
                 print(f"\n🤖 GPT analyzing {symbol} at {now.isoformat()}...")
