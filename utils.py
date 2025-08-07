@@ -2,78 +2,80 @@ import json
 
 def parse_signal_response(reply):
     try:
-        # Nếu GPT trả về dạng JSON đúng, parse trực tiếp
-        try:
-            raw = reply.strip()
-            if raw.startswith("```json"):
-                raw = raw[7:]  # cắt bỏ "```json\n"
-            if raw.endswith("```"):
-                raw = raw[:-3]  # cắt bỏ "```"
-            data = json.loads(raw.strip())
+        raw = reply.strip()
+        if raw.startswith("```json"):
+            raw = raw[7:]
+        if raw.endswith("```"):
+            raw = raw[:-3]
 
-            # Đổi key thành dạng thống nhất
-            result = {k.strip().lower().replace(" ", "_"): v for k, v in data.items()}
+        data = json.loads(raw)
 
-            # Convert các trường số
-            for k in ["entry_1", "entry_2", "stop_loss"]:
-                if k in result:
-                    result[k] = safe_float(result[k])
+        # Normalize key format
+        result = {k.strip().lower().replace(" ", "_"): v for k, v in data.items()}
 
-            result["tp"] = []
-            for i in range(1, 6):
-                key = f"tp{i}"
-                if key in result:
-                    result["tp"].append(safe_float(result[key]))
+        # Force convert required numeric fields
+        for k in ["entry_1", "entry_2", "stop_loss"]:
+            result[k] = safe_float(result.get(k))
 
-            # Đảm bảo có cả nhận định và mã giao dịch nếu có
-            result["assessment"] = result.get("nhận_định", result.get("nhận_định_ngắn_gọn", result.get("assessment", "Không có đánh giá")))
-            result["pair"] = result.get("symbol", result.get("pair", "UNKNOWN"))
+        # Parse tp as list of floats
+        result["tp"] = [safe_float(x) for x in result.get("tp", []) if safe_float(x) is not None]
 
-            # Kiểm tra định dạng hợp lệ
-            required_fields = ["entry_1", "stop_loss", "tp"]
-            if all(result.get(f) for f in required_fields):
-                return result
-            else:
-                print(f"⚠️ Dữ liệu thiếu trường bắt buộc: {required_fields} -> BỎ QUA")
-                return None
+        # Optional fields
+        result["assessment"] = result.get("nhan_dinh", result.get("assessment", "Không có đánh giá"))
+        result["pair"] = result.get("symbol", result.get("pair", "UNKNOWN"))
 
-        except json.JSONDecodeError:
-            pass  # fallback nếu không phải JSON chuẩn
+        # Check required fields
+        required_fields = ["entry_1", "stop_loss", "tp"]
+        if all(result.get(f) for f in required_fields) and isinstance(result["tp"], list) and len(result["tp"]) > 0:
+            return result
+        else:
+            print(f"⚠️ Dữ liệu thiếu trường bắt buộc: {required_fields} -> BỎ QUA")
+            return None
 
-        # Fallback nếu không phải JSON
+    except json.JSONDecodeError:
+        print("⚠️ JSON decode error - fallback to line parsing")
+        pass
+
+    # Fallback line parsing
+    try:
         lines = reply.strip().splitlines()
         result = {}
         for line in lines:
-            line = line.strip()
-            if not line or ":" not in line:
+            if ":" not in line:
                 continue
             key, val = line.split(":", 1)
             key = key.strip().lower().replace(" ", "_")
             val = val.strip().strip('"').strip("'")
 
-            # Parse các trường số
             if key in ["entry_1", "entry_2", "stop_loss"]:
                 result[key] = safe_float(val)
-            elif key.startswith("tp"):
-                if "tp" not in result:
-                    result["tp"] = []
-                result["tp"].append(safe_float(val))
+            elif key == "tp":
+                val = val.strip("[]")
+                result["tp"] = [safe_float(x) for x in val.split(",") if safe_float(x) is not None]
             else:
                 result[key] = val
 
-        result["assessment"] = result.get("nhận_định", result.get("nhận_định_ngắn_gọn", result.get("assessment", "Không có đánh giá")))
+        result["assessment"] = result.get("nhan_dinh", result.get("assessment", "Không có đánh giá"))
         result["pair"] = result.get("symbol", result.get("pair", "UNKNOWN"))
 
         required_fields = ["entry_1", "stop_loss", "tp"]
-        if all(result.get(f) for f in required_fields):
+        if all(result.get(f) for f in required_fields) and isinstance(result["tp"], list) and len(result["tp"]) > 0:
             return result
         else:
-            print(f"⚠️ Dữ liệu fallback thiếu trường bắt buộc: {required_fields} -> BỎ QUA")
+            print(f"⚠️ Fallback dữ liệu thiếu trường bắt buộc: {required_fields} -> BỎ QUA")
             return None
 
     except Exception as e:
         print(f"❌ Error parsing GPT response: {e}")
         return None
+
+
+def safe_float(val):
+    try:
+        return float(str(val).replace(",", "")) if val not in [None, "None", "null", ""] else None
+    except:
+        return None
+
 
 def is_safe_dca(trend_4h, trend_1d):
     return (
@@ -81,9 +83,3 @@ def is_safe_dca(trend_4h, trend_1d):
         (trend_4h == "sideways" and trend_1d == "uptrend") or
         (trend_4h == "downtrend" and trend_1d == "sideways")
     )
-
-def safe_float(val):
-    try:
-        return float(str(val).replace(",", "")) if val not in [None, "None", "null", ""] else None
-    except:
-        return None
