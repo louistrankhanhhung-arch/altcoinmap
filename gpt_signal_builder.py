@@ -40,25 +40,34 @@ Xu hướng 4H: {trend_4h}, xu hướng 1D: {trend_1d}
 
 Hãy đánh giá xem có cơ hội giao dịch không dựa trên xu hướng (Trend), lực nến, RSI, MA, Bollinger Bands. 
 Các mức Entry, Stop Loss và Take Profit cần được xác định dựa trên các chỉ báo kỹ thuật như hỗ trợ/kháng cự, Bollinger Bands, MA và ATR. Tránh đặt Entry quá xa giá hiện tại. Stop Loss không nên quá gần. TP nên thực tế và có thể đạt được trong bối cảnh thị trường. Tỷ lệ R:R nên hợp lý, ví dụ 1:1.5 trở lên.
-Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau, ưu tiên đúng kỹ thuật và thực tế thị trường:
+Nếu có, hãy đề xuất kế hoạch giao dịch chi tiết như sau, ưu tiên đúng kỹ thuật và thực tế thị trường.
 
-Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY đúng định dạng sau, KHÔNG thêm ```json hoặc bất kỳ mô tả, ký tự nào khác:
+Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` hoặc bất kỳ chú thích, văn bản mô tả nào bên ngoài JSON. Định dạng bắt buộc:
 """
-                prompt += """
+prompt += """
 {
-  "symbol": "...",
+  "symbol": "BTC/USDT",
   "direction": "Long hoặc Short",
-  "entry1": ..., 
-  "entry2": ...,  
-  "stop_loss": ..., 
-  "take_profits": [...],
+  "entry1": 12345.67,
+  "entry2": 12200.0,
+  "stop_loss": 11950.0,
+  "take_profits": [12450.0, 12600.0, 12800.0],
   "risk_level": "Low / Medium / High",
-  "leverage": "3x / 5x",
+  "leverage": "3x / 5x / 10x",
   "confidence": "high / medium / low",
-  "key_watch": "...",
-  "nhan_dinh": "..."
+  "key_watch": "Kháng cự gần 12500, chờ xác nhận breakout",
+  "nhan_dinh": "Tín hiệu Long theo xu hướng, lực nến mạnh, nên chờ retest entry"
 }
 """
+
+prompt += """
+⚠️ Lưu ý kỹ:
+- Chỉ trả về JSON đúng chuẩn như trên, KHÔNG thêm bất kỳ ký tự lạ, mô tả hay định dạng markdown nào.
+- Các trường `entry1`, `entry2`, `stop_loss`, `take_profits` PHẢI là số (float), KHÔNG để trong ngoặc kép.
+- `take_profits` phải là một danh sách các số (mảng số thực).
+- Không được thiếu bất kỳ trường nào trong JSON trên.
+"""
+
 
                 now = datetime.now(UTC)
                 print(f"\n🤖 GPT analyzing {symbol} at {now.isoformat()}...")
