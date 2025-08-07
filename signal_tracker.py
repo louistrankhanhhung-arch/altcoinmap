@@ -101,6 +101,7 @@ def check_signals():
                 signal["hit_tp"] = hit_tp
                 if len(hit_tp) == len(tps):
                     signal["status"] = "closed"
+                    send_message(f"🎯 <b>{pair}</b> đã hoàn thành tất cả mục tiêu và đóng lệnh.", reply_to_id=message_id)
 
             updated_signals.append(signal)
 
