@@ -68,6 +68,10 @@ def detect_candle_signal(candles):
     return "none"
 
 def run_block(block_name):
+    current_time = datetime.now(UTC)
+    if current_time.hour % 4 != 0:
+        print(f"⏸ Bỏ qua block {block_name} vì chưa đến thời điểm đóng nến 4H")
+        return
     symbols = BLOCKS.get(block_name)
     if not symbols:
         print(f"❌ Block không hợp lệ: {block_name}")
