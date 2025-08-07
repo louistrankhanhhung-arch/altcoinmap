@@ -5,7 +5,7 @@ import json
 from utils import parse_signal_response
 
 # Gửi từng coin một với prompt có định dạng từ PROMPT_TEMPLATE
-async def get_gpt_signals(data_by_symbol, suggested_tps_by_symbol):
+async def get_gpt_signals(data_by_symbol, suggested_tps_by_symbol, test_mode=False):
     results = {}
 
     openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -13,11 +13,13 @@ async def get_gpt_signals(data_by_symbol, suggested_tps_by_symbol):
     async with openai.AsyncOpenAI() as client:
         for symbol, tf_data in data_by_symbol.items():
             try:
-                # Chỉ tạo tín hiệu nếu nến 4H đã đóng
-                current_time = datetime.now(UTC)
-                if current_time.hour % 4 != 0:
-                    print(f"⏳ Bỏ qua {symbol} vì nến 4H chưa đóng.")
-                    continue
+                                if not test_mode:
+                    current_time = datetime.now(UTC)
+                    if current_time.hour % 4 != 0:
+                        print(f"⏳ Bỏ qua {symbol} vì nến 4H chưa đóng.")
+                        continue
+                else:
+                    print(f"🧪 [TEST MODE] Luôn xử lý {symbol} bất kể giờ.")
 
                 summary_lines = []
                 for tf in ["1H", "4H", "1D"]:
