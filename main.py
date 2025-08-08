@@ -8,9 +8,9 @@ from gpt_signal_builder import get_gpt_signals, BLOCKS
 from kucoin_api import fetch_coin_data
 from telegram_bot import send_message, format_message
 from signal_logger import save_signals
-from indicators import compute_indicators, generate_suggested_tps
-from signal_tracker import resolve_duplicate_signal
 from indicators import compute_indicators, generate_suggested_tps, compute_short_term_momentum
+from signal_tracker import resolve_duplicate_signal
+from momentum_config import get_thresholds
 
 
 ACTIVE_FILE = "active_signals.json"
@@ -42,6 +42,29 @@ def save_active_signals(signals):
     new_data = signals + existing
     with open(ACTIVE_FILE, "w") as f:
         json.dump(new_data[:50], f, indent=2)
+
+
+def is_opposite_trend(a, b):
+    return (a == "uptrend" and b == "downtrend") or (a == "downtrend" and b == "uptrend")
+
+def strong_momentum_flag(m, symbol):
+    """
+    Kiểm tra động lượng 1H đủ mạnh theo ngưỡng per-coin từ momentum_config.get_thresholds(symbol)
+    """
+    if not isinstance(m, dict):
+        return False
+    th = get_thresholds(symbol)
+    pc = m.get("pct_change_1h")
+    atr_r = m.get("atr_spike_ratio")
+    vol_r = m.get("volume_spike_ratio")
+    bb_r = m.get("bb_width_ratio")
+    return any([
+        (pc is not None and abs(pc) >= th.get("pct_change_1h", 2.0)),
+        (atr_r is not None and atr_r >= th.get("atr_spike_ratio", 1.5)),
+        (vol_r is not None and vol_r >= th.get("volume_spike_ratio", 1.5)),
+        (bb_r is not None and bb_r >= th.get("bb_width_ratio", 1.4)),
+    ])
+
 
 def classify_trend(candles):
     if not candles or candles[-1].get("ma20") is None:
@@ -161,12 +184,12 @@ def run_block(block_name):
                 suggested = generate_suggested_tps(price, direction, sr_levels)
                 suggested_tps_by_symbol[symbol] = suggested
 
-            print("📊 Sending to GPT...")
-            signals_dict = asyncio.run(get_gpt_signals(data_by_symbol, suggested_tps_by_symbol, test_mode=TEST_MODE))
-            signals = list(signals_dict.values())
-            print(f"✅ Số tín hiệu hợp lệ sau lọc: {len(signals)}")
+        print("📊 Sending to GPT...")
+        signals_dict = asyncio.run(get_gpt_signals(data_by_symbol, suggested_tps_by_symbol, test_mode=TEST_MODE))
+        signals = list(signals_dict.values())
+        print(f"✅ Số tín hiệu hợp lệ sau lọc: {len(signals)}")
 
-            final_signals = []
+        final_signals = []
         for sig in signals:
             sym = sig.get("pair") or sig.get("symbol")
             tf_data = data_by_symbol.get(sym, {}).get("4H", {})
