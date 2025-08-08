@@ -76,7 +76,9 @@ Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` ho�
 
 ⚠️ Lưu ý kỹ:
 - Chỉ trả về JSON đúng chuẩn như trên, KHÔNG thêm bất kỳ ký tự lạ, mô tả hay định dạng markdown nào.
-- Không sử dụng emoji hoặc ký tự đặc biệt trong output. 
+- Không sử dụng emoji hoặc ký tự đặc biệt trong output.
+- Dùng dấu chấm cho số thập phân, KHÔNG dùng dấu phẩy tách hàng nghìn.
+
 - Chỉ sử dụng ký tự ASCII chuẩn hoặc ký tự chữ/số thông thường. Không sử dụng ký tự Unicode ngoài tiếng Việt và tiếng Anh.
 - Các trường `entry_1`, `entry_2`, `stop_loss`, `tp` PHẢI là số (float), KHÔNG để trong ngoặc kép.
 - `tp` phải là một danh sách các số (mảng số thực).
@@ -88,8 +90,9 @@ Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` ho�
 
                 response = await client.chat.completions.create(
                     model="gpt-4o",
+                    response_format={"type": "json_object"},
                     messages=[{"role": "user", "content": prompt.strip()}],
-                    temperature=0.4,
+                    temperature=0.2,
                     max_tokens=1200,
                     timeout=30
                 )
@@ -100,6 +103,9 @@ Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` ho�
                 # Strip leading/trailing non-json characters for safety
                 json_start = reply.find('{')
                 json_end = reply.rfind('}') + 1
+                if json_start == -1 or json_end <= 0:
+                    print(f"⚠️ Không tìm thấy JSON trong reply cho {symbol}")
+                    continue
                 cleaned = reply[json_start:json_end].strip()
 
                 parsed = parse_signal_response(cleaned)
