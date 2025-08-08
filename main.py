@@ -25,6 +25,17 @@ def safe_float(val):
     except:
         return None
 
+def ensure_message_id(sig):
+    mid = sig.get("message_id")
+    if mid is None:
+        print(f"⚠️ Không có message_id cho {sig.get('pair')} — reply sẽ không hoạt động.")
+        return sig
+    try:
+        sig["message_id"] = int(mid)
+    except Exception:
+        print(f"⚠️ message_id không phải số nguyên: {mid}. Giữ nguyên.")
+    return sig
+
 def save_active_signals(signals):
     now = datetime.now(UTC).isoformat()
     for s in signals:
@@ -209,6 +220,10 @@ def run_block(block_name):
             try:
                 text = format_message(sig)
                 message_id = send_message(text)
+                if message_id is None:
+                    print(f"⟳ Retry send for {sym} to fetch message_id...")
+                    from telegram_bot import send_message_with_retry
+                    message_id = send_message_with_retry(text)
                 sig["message_id"] = message_id
                 final_signals.append(sig)
             except Exception as e:
