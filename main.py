@@ -8,7 +8,7 @@ from gpt_signal_builder import get_gpt_signals, BLOCKS
 from kucoin_api import fetch_coin_data
 from telegram_bot import send_message, format_message
 from signal_logger import save_signals
-from indicators import compute_indicators, generate_suggested_tps
+from indicators import compute_indicators, generate_suggested_tps, compute_short_term_momentum
 from signal_tracker import resolve_duplicate_signal
 
 ACTIVE_FILE = "active_signals.json"
@@ -25,17 +25,6 @@ def safe_float(val):
     except:
         return None
 
-def ensure_message_id(sig):
-    mid = sig.get("message_id")
-    if mid is None:
-        print(f"⚠️ Không có message_id cho {sig.get('pair')} — reply sẽ không hoạt động.")
-        return sig
-    try:
-        sig["message_id"] = int(mid)
-    except Exception:
-        print(f"⚠️ message_id không phải số nguyên: {mid}. Giữ nguyên.")
-    return sig
-
 def save_active_signals(signals):
     now = datetime.now(UTC).isoformat()
     for s in signals:
@@ -51,6 +40,30 @@ def save_active_signals(signals):
     new_data = signals + existing
     with open(ACTIVE_FILE, "w") as f:
         json.dump(new_data[:50], f, indent=2)
+
+def is_opposite_trend(a, b):
+    return (a == "uptrend" and b == "downtrend") or (a == "downtrend" and b == "uptrend")
+
+def strong_momentum_flag(m):
+    """
+    Quy tắc đơn giản: momentum mạnh khi một trong các điều kiện sau thỏa:
+      - abs(pct_change_1h) >= 2.0
+      - atr_spike_ratio >= 1.5
+      - volume_spike_ratio >= 1.5
+      - bb_width_ratio >= 1.4
+    """
+    if not isinstance(m, dict):
+        return False
+    pc = m.get("pct_change_1h")
+    atr_r = m.get("atr_spike_ratio")
+    vol_r = m.get("volume_spike_ratio")
+    bb_r = m.get("bb_width_ratio")
+    return any([
+        (pc is not None and abs(pc) >= 2.0),
+        (atr_r is not None and atr_r >= 1.5),
+        (vol_r is not None and vol_r >= 1.5),
+        (bb_r is not None and bb_r >= 1.4),
+    ])
 
 def classify_trend(candles):
     if not candles or candles[-1].get("ma20") is None:
@@ -106,22 +119,59 @@ def run_block(block_name):
             }
             raw_data_by_symbol[symbol] = raw_data
             enriched = {}
-            for tf in raw_data:
-                candles = compute_indicators(raw_data[tf])
-                trend = classify_trend(candles)
-                signal = detect_candle_signal(candles)
-                enriched[tf] = {
-                    "trend": trend,
-                    "candle_signal": signal,
-                    **candles[-1]
-                }
+for tf in raw_data:
+    candles = compute_indicators(raw_data[tf])
+    trend = classify_trend(candles)
+    signal = detect_candle_signal(candles)
+    enriched[tf] = {
+        "trend": trend,
+        "candle_signal": signal,
+        **candles[-1]
+    }
+# Gắn động lượng 1H
+if "1H" in raw_data:
+    try:
+        candles_1h = compute_indicators(raw_data["1H"])
+        momo = compute_short_term_momentum(candles_1h)
+        if isinstance(momo, dict):
+            enriched.setdefault("1H", {}).update({
+                "pct_change_1h": momo.get("pct_change_1h"),
+                "bb_width_ratio": momo.get("bb_width_ratio"),
+                "atr_spike_ratio": momo.get("atr_spike_ratio"),
+                "volume_spike_ratio": momo.get("volume_spike_ratio"),
+            })
+    except Exception as _e:
+        print(f"⚠️ Không tính được momentum 1H cho {symbol}: {_e}")
 
-            trends = [enriched[tf]["trend"] for tf in TF_MAP if tf in enriched]
-            if all(t == "sideways" for t in trends):
-                print(f"⚠️ {symbol} có cả 3 khung thời gian đều sideways -> BỎ QUA")
-                continue
+# Siết đồng thuận khung giờ
+t1h = enriched.get("1H", {}).get("trend", "unknown")
+t4h = enriched.get("4H", {}).get("trend", "unknown")
+t1d = enriched.get("1D", {}).get("trend", "unknown")
+candle4h = enriched.get("4H", {}).get("candle_signal", "none")
 
-            data_by_symbol[symbol] = enriched
+accept = False
+# Rule chính: 4H phải KHÔNG sideways và đồng hướng với 1D
+if t4h in ("uptrend", "downtrend") and t1d == t4h:
+    accept = True
+# Rule phụ: 1D không sideways, 4H không ngược 1D (và 4H không sideways)
+elif t1d in ("uptrend", "downtrend") and not is_opposite_trend(t4h, t1d) and t4h != "sideways":
+    accept = True
+else:
+    # Ngoại lệ: 4H có nến tín hiệu mạnh + momentum 1H bùng nổ
+    mmm = {
+        "pct_change_1h": enriched.get("1H", {}).get("pct_change_1h"),
+        "bb_width_ratio": enriched.get("1H", {}).get("bb_width_ratio"),
+        "atr_spike_ratio": enriched.get("1H", {}).get("atr_spike_ratio"),
+        "volume_spike_ratio": enriched.get("1H", {}).get("volume_spike_ratio"),
+    }
+    if candle4h in ("bullish engulfing", "bearish engulfing") and strong_momentum_flag(mmm):
+        accept = True
+
+if not accept:
+    print(f"⛔ {symbol}: không đạt đồng thuận 4H/1D (t4h={t4h}, t1d={t1d}), bỏ qua.")
+    continue
+
+data_by_symbol[symbol] = enriched
 
         suggested_tps_by_symbol = {}
         for symbol in data_by_symbol:
@@ -220,10 +270,6 @@ def run_block(block_name):
             try:
                 text = format_message(sig)
                 message_id = send_message(text)
-                if message_id is None:
-                    print(f"⟳ Retry send for {sym} to fetch message_id...")
-                    from telegram_bot import send_message_with_retry
-                    message_id = send_message_with_retry(text)
                 sig["message_id"] = message_id
                 final_signals.append(sig)
             except Exception as e:
