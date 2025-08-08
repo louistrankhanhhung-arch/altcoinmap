@@ -24,7 +24,7 @@ GROUPS = {
         },
     },
     "LARGE_CAP_ALTS": {
-        "symbols": {"LINK", "AVAX", "NEAR"},
+        "symbols": {"LINK", "AVAX", "NEAR", "INJ"},
         "thresholds": {
             "pct_change_1h": 1.5,
             "atr_spike_ratio": 1.4,
