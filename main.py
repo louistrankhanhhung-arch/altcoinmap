@@ -121,17 +121,17 @@ def run_block(block_name):
             raw_data_by_symbol[symbol] = raw_data
             enriched = {}
             for tf in raw_data:
-            candles = compute_indicators(raw_data[tf])
-            trend = classify_trend(candles)
-            signal = detect_candle_signal(candles)
-            # compute slopes over last few bars (default 5)
-            slopes = compute_slopes(candles, window=5)
-            enriched[tf] = {
-                "trend": trend,
-                "candle_signal": signal,
-                **candles[-1],
-                **({k: v for k, v in (slopes or {}).items() if v is not None})
-            }
+                candles = compute_indicators(raw_data[tf])
+                trend = classify_trend(candles)
+                signal = detect_candle_signal(candles)
+                # compute slopes over last few bars (default 5)
+                slopes = compute_slopes(candles, window=5)
+                enriched[tf] = {
+                    "trend": trend,
+                    "candle_signal": signal,
+                    **candles[-1],
+                    **({k: v for k, v in (slopes or {}).items() if v is not None})
+                }
             # Gắn động lượng 1H
             if "1H" in raw_data:
                 try:
