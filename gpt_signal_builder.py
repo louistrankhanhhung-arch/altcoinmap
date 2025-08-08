@@ -25,11 +25,12 @@ async def get_gpt_signals(data_by_symbol, suggested_tps_by_symbol, test_mode=Fal
                     item = tf_data.get(tf, {})
                     if item:
                         base = f"[{tf}] Trend: {item.get('trend')}, RSI: {item.get('rsi')}, MA20: {item.get('ma20')}, MA50: {item.get('ma50')}, Candle: {item.get('candle_signal')}, BB: ({item.get('bb_lower')}, {item.get('bb_upper')})"
+                        slopes = f", SLOPE: ma20={item.get('slope_ma20')}, ma50={item.get('slope_ma50')}, rsi={item.get('slope_rsi')}, bbw={item.get('slope_bb_width')}, atr={item.get('slope_atr')}"
                         if tf == "1H":
                             momo = f", MOMO: pct={item.get('pct_change_1h')}, bbw={item.get('bb_width_ratio')}, atr={item.get('atr_spike_ratio')}, vol={item.get('volume_spike_ratio')}"
-                            summary_lines.append(base + momo)
+                            summary_lines.append(base + slopes + momo)
                         else:
-                            summary_lines.append(base)
+                            summary_lines.append(base + slopes)
                 current_price = tf_data.get("4H", {}).get("close", "N/A")
                 trend_1h = tf_data.get("1H", {}).get("trend", "unknown")
                 trend_4h = tf_data.get("4H", {}).get("trend", "unknown")
