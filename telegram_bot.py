@@ -1,5 +1,6 @@
 import os
 import requests
+import time
 
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
 USER_ID = os.getenv("USER_ID")
@@ -20,7 +21,7 @@ def send_signals(signals):
                 if 'pair' not in s:
                     s['pair'] = s.get('symbol', 'UNKNOWN')
                 text = format_message(s)
-                message_id = send_message(text)
+                message_id = send_message_with_retry(text)
                 s["message_id"] = message_id
     elif isinstance(signals, str):
         send_message(signals)
@@ -35,16 +36,35 @@ def send_message(text, reply_to_id=None):
     if reply_to_id:
         data["reply_to_message_id"] = reply_to_id
 
+    # Basic send once (kept for backward compatibility); returns message_id or None
     print(f"[SEND] {text[:80]}..." if len(text) > 80 else f"[SEND] {text}")
     try:
         response = requests.post(url, json=data, timeout=10)
         if response.status_code != 200:
             print(f"❌ Failed to send message: {response.status_code} - {response.text}")
-        else:
-            print("✅ Message sent to Telegram.")
-            return response.json().get("result", {}).get("message_id")
+            return None
+        res = response.json()
+        msg = res.get("result")
+        if isinstance(msg, dict):
+            mid = msg.get("message_id")
+            if mid is None:
+                print(f"⚠️ Telegram returned no message_id. Payload: {res}")
+            else:
+                print(f"✅ Message sent. message_id={mid}")
+            return mid
+        print(f"⚠️ Unexpected Telegram response format: {res}")
     except Exception as e:
         print(f"❌ Telegram send failed: {e}")
+    return None
+
+def send_message_with_retry(text, reply_to_id=None, retries=3):
+    backoff = 1.0
+    for attempt in range(1, retries+1):
+        mid = send_message(text, reply_to_id=reply_to_id)
+        if mid is not None:
+            return mid
+        time.sleep(backoff)
+        backoff = min(backoff * 2, 8)
     return None
 
 decimal_map = {
