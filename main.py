@@ -9,7 +9,7 @@ from kucoin_api import fetch_coin_data
 from telegram_bot import send_message, format_message
 from signal_logger import save_signals
 from indicators import compute_indicators, generate_suggested_tps, compute_short_term_momentum, compute_slopes
-from signal_tracker import resolve_duplicate_signal
+from signal_tracker import resolve_duplicate_signal, load_active_signals
 from momentum_config import get_thresholds
 
 
@@ -64,6 +64,67 @@ def strong_momentum_flag(m, symbol):
         (vol_r is not None and vol_r >= th.get("volume_spike_ratio", 1.5)),
         (bb_r is not None and bb_r >= th.get("bb_width_ratio", 1.4)),
     ])
+
+
+
+# --- Custom filters: ATR regime R:R min, cooldown, and volume floor ---
+COOLDOWN_HOURS = 3  # refuse new signals for same pair within this window after a losing/invalidated trade
+
+def atr_regime_rr_min(atr_value, price):
+    """
+    Map ATR% -> minimal RR required
+    - low vol (atr% < 0.7): 1.3
+    - mid vol (0.7 <= atr% < 1.5): 1.5
+    - high vol (atr% >= 1.5): 1.8
+    """
+    try:
+        atr_pct = (atr_value / price) * 100.0 if (atr_value is not None and price) else None
+    except Exception:
+        atr_pct = None
+    if atr_pct is None:
+        return 1.4  # fallback
+    if atr_pct < 0.7:
+        return 1.3
+    elif atr_pct < 1.5:
+        return 1.5
+    else:
+        return 1.8
+
+def cooldown_ok(pair, now_utc):
+    """
+    Reject new signal if a recent one of same pair was stopped/canceled/reversed/timeout within COOLDOWN_HOURS
+    """
+    try:
+        records = load_active_signals()
+    except Exception:
+        records = []
+    bad_status = {"stopped", "canceled", "reversed", "timeout"}
+    for rec in records:
+        if rec.get("pair") != pair:
+            continue
+        status = rec.get("status", "open")
+        if status in bad_status:
+            try:
+                sent_at = rec.get("sent_at")
+                when = datetime.fromisoformat(sent_at.replace('Z', '+00:00')) if isinstance(sent_at, str) else None
+            except Exception:
+                when = None
+            if when and (now_utc - when).total_seconds() < COOLDOWN_HOURS * 3600:
+                return False
+    return True
+
+def volume_floor_ok(enriched_1h):
+    """
+    Require at least a neutral volume condition on 1H:
+    - if we have volume_spike_ratio and it's < 0.8 -> reject (too dry)
+    - if it's None -> conservatively reject (no volume info)
+    """
+    if not isinstance(enriched_1h, dict):
+        return False
+    vsr = enriched_1h.get("volume_spike_ratio")
+    if vsr is None:
+        return False
+    return vsr >= 0.8
 
 
 def classify_trend(candles):
@@ -169,7 +230,12 @@ def run_block(block_name):
                     "volume_spike_ratio": enriched.get("1H", {}).get("volume_spike_ratio"),
                 }
                 if candle4h in ("bullish engulfing", "bearish engulfing") and strong_momentum_flag(mmm, symbol):
-                    accept = True
+            slope_ok = True
+            slope_val = enriched.get("4H", {}).get("slope_ma20")
+            if slope_val is not None:
+                slope_ok = abs(slope_val) > 0.0
+            if slope_ok:
+                accept = True
 
             if not accept:
                 print(f"⛔ {symbol}: không đạt đồng thuận 4H/1D (t4h={t4h}, t1d={t1d}), bỏ qua.")
@@ -195,6 +261,10 @@ def run_block(block_name):
         final_signals = []
         for sig in signals:
             sym = sig.get("pair") or sig.get("symbol")
+            enriched_1h = data_by_symbol.get(sym, {}).get("1H", {})
+            if not volume_floor_ok(enriched_1h):
+                print(f"⚠️ {sym} bị loại: volume 1H quá thấp hoặc không có dữ liệu.")
+                continue
             tf_data = data_by_symbol.get(sym, {}).get("4H", {})
             raw_4h = raw_data_by_symbol.get(sym, {}).get("4H", [])
 
@@ -261,9 +331,13 @@ def run_block(block_name):
             if tp1:
                 rr_reward = abs(tp1 - entry_1)
                 rr = rr_reward / rr_ratio
-                if rr < 1.2:
-                    print(f"⚠️ R:R quá thấp ({rr:.2f}) cho {sym} | entry: {entry_1}, sl: {stop_loss}, tp1: {tp1}")
-                    continue
+                # Dynamic R:R threshold by ATR regime (4H)
+            atr_4h = tf_data.get("atr")
+            price_4h = tf_data.get("close")
+            rr_min = atr_regime_rr_min(atr_4h, price_4h)
+            if rr < rr_min:
+                print(f"⚠️ R:R ({rr:.2f}) < yêu cầu tối thiểu ({rr_min:.2f}) cho {sym}")
+                continue
                 else:
                     print(f"✅ R:R = {rr:.2f} cho {sym}")
             else:
@@ -271,6 +345,10 @@ def run_block(block_name):
                 continue
 
             sig = resolve_duplicate_signal(sig)
+            now_utc = datetime.now(UTC)
+            if not cooldown_ok(sym, now_utc):
+                print(f"⏸ {sym} bị loại do cooldown {COOLDOWN_HOURS}h sau lệnh thất bại gần đây.")
+                continue
             try:
                 text = format_message(sig)
                 message_id = send_message(text)
