@@ -9,6 +9,7 @@ from kucoin_api import fetch_coin_data
 from telegram_bot import send_message, format_message
 from signal_logger import save_signals
 from indicators import compute_indicators, generate_suggested_tps, compute_short_term_momentum
+from momentum_config import get_thresholds
 from signal_tracker import resolve_duplicate_signal
 
 ACTIVE_FILE = "active_signals.json"
@@ -44,7 +45,7 @@ def save_active_signals(signals):
 def is_opposite_trend(a, b):
     return (a == "uptrend" and b == "downtrend") or (a == "downtrend" and b == "uptrend")
 
-def strong_momentum_flag(m):
+def strong_momentum_flag(m, symbol):
     """
     Quy tắc đơn giản: momentum mạnh khi một trong các điều kiện sau thỏa:
       - abs(pct_change_1h) >= 2.0
@@ -58,11 +59,12 @@ def strong_momentum_flag(m):
     atr_r = m.get("atr_spike_ratio")
     vol_r = m.get("volume_spike_ratio")
     bb_r = m.get("bb_width_ratio")
+    th = get_thresholds(symbol)
     return any([
-        (pc is not None and abs(pc) >= 2.0),
-        (atr_r is not None and atr_r >= 1.5),
-        (vol_r is not None and vol_r >= 1.5),
-        (bb_r is not None and bb_r >= 1.4),
+        (pc is not None and abs(pc) >= th.get("pct_change_1h", 2.0)),
+        (atr_r is not None and atr_r >= th.get("atr_spike_ratio", 1.5)),
+        (vol_r is not None and vol_r >= th.get("volume_spike_ratio", 1.5)),
+        (bb_r is not None and bb_r >= th.get("bb_width_ratio", 1.4)),
     ])
 
 def classify_trend(candles):
@@ -164,7 +166,7 @@ else:
         "atr_spike_ratio": enriched.get("1H", {}).get("atr_spike_ratio"),
         "volume_spike_ratio": enriched.get("1H", {}).get("volume_spike_ratio"),
     }
-    if candle4h in ("bullish engulfing", "bearish engulfing") and strong_momentum_flag(mmm):
+    if candle4h in ("bullish engulfing", "bearish engulfing") and strong_momentum_flag(mmm, symbol):
         accept = True
 
 if not accept:
