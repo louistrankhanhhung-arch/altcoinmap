@@ -8,7 +8,7 @@ from gpt_signal_builder import get_gpt_signals, BLOCKS
 from kucoin_api import fetch_coin_data
 from telegram_bot import send_message, format_message
 from signal_logger import save_signals
-from indicators import compute_indicators, generate_suggested_tps, compute_short_term_momentum
+from indicators import compute_indicators, generate_suggested_tps, compute_short_term_momentum, compute_slopes
 from signal_tracker import resolve_duplicate_signal
 from momentum_config import get_thresholds
 
@@ -121,14 +121,17 @@ def run_block(block_name):
             raw_data_by_symbol[symbol] = raw_data
             enriched = {}
             for tf in raw_data:
-                candles = compute_indicators(raw_data[tf])
-                trend = classify_trend(candles)
-                signal = detect_candle_signal(candles)
-                enriched[tf] = {
-                    "trend": trend,
-                    "candle_signal": signal,
-                    **candles[-1]
-                }
+            candles = compute_indicators(raw_data[tf])
+            trend = classify_trend(candles)
+            signal = detect_candle_signal(candles)
+            # compute slopes over last few bars (default 5)
+            slopes = compute_slopes(candles, window=5)
+            enriched[tf] = {
+                "trend": trend,
+                "candle_signal": signal,
+                **candles[-1],
+                **({k: v for k, v in (slopes or {}).items() if v is not None})
+            }
             # Gắn động lượng 1H
             if "1H" in raw_data:
                 try:
