@@ -135,3 +135,68 @@ def generate_stop_loss(direction, entry_1, bb_lower, bb_upper, swing_low, swing_
         if sl < entry_2:
             sl = entry_2 + 0.5 * atr_val
     return round(sl, 4)
+
+
+def compute_short_term_momentum(candles_1h, lookback=20, pct_window=1):
+    """
+    Tính các thước đo động lượng ngắn hạn trên khung 1H để phát hiện breakout intraday.
+    Trả về dict với 4 trường:
+      - pct_change_1h: % thay đổi giá của nến gần nhất so với pct_window nến trước (mặc định 1 nến = 1h).
+      - bb_width_ratio: tỉ lệ độ rộng Bollinger Bands (nến cuối) so với trung bình lookback.
+      - atr_spike_ratio: ATR(nến cuối) / ATR trung bình lookback.
+      - volume_spike_ratio: khối lượng(nến cuối) / khối lượng trung bình lookback.
+    """
+    if not candles_1h or len(candles_1h) < max(lookback+2, 22):
+        return {
+            "pct_change_1h": None,
+            "bb_width_ratio": None,
+            "atr_spike_ratio": None,
+            "volume_spike_ratio": None
+        }
+
+    closes = [c["close"] for c in candles_1h]
+    last_close = closes[-1]
+    prev_idx = -1 - max(1, pct_window)
+    prev_close = closes[prev_idx]
+
+    try:
+        pct_change_1h = (last_close - prev_close) / prev_close * 100.0 if prev_close else None
+    except Exception:
+        pct_change_1h = None
+
+    # Chuẩn bị BB width series (ưu tiên dùng bb có sẵn nếu đã tính)
+    bb_width_series = []
+    for c in candles_1h:
+        lo = c.get("bb_lower")
+        up = c.get("bb_upper")
+        mid = c.get("bb_mid") or c.get("ma20") or c.get("close")
+        if lo is None or up is None or mid is None or mid == 0:
+            bb_width_series.append(None)
+        else:
+            bb_width_series.append((up - lo) / mid)
+
+    last_bb_width = bb_width_series[-1] if bb_width_series else None
+    hist_bb = [x for x in bb_width_series[-(lookback+1):-1] if x is not None]
+    bb_width_avg = sum(hist_bb) / len(hist_bb) if hist_bb else None
+    bb_width_ratio = (last_bb_width / bb_width_avg) if (last_bb_width and bb_width_avg and bb_width_avg != 0) else None
+
+    # ATR spike
+    atr_series = [c.get("atr") for c in candles_1h]
+    last_atr = atr_series[-1]
+    hist_atr = [x for x in atr_series[-(lookback+1):-1] if x is not None]
+    atr_avg = sum(hist_atr) / len(hist_atr) if hist_atr else None
+    atr_spike_ratio = (last_atr / atr_avg) if (last_atr and atr_avg and atr_avg != 0) else None
+
+    # Volume spike
+    vols = [c.get("volume") for c in candles_1h]
+    last_vol = vols[-1]
+    hist_vol = [x for x in vols[-(lookback+1):-1] if x not in (None, 0)]
+    vol_avg = sum(hist_vol) / len(hist_vol) if hist_vol else None
+    volume_spike_ratio = (last_vol / vol_avg) if (last_vol and vol_avg and vol_avg != 0) else None
+
+    return {
+        "pct_change_1h": round(pct_change_1h, 3) if pct_change_1h is not None else None,
+        "bb_width_ratio": round(bb_width_ratio, 3) if bb_width_ratio is not None else None,
+        "atr_spike_ratio": round(atr_spike_ratio, 3) if atr_spike_ratio is not None else None,
+        "volume_spike_ratio": round(volume_spike_ratio, 3) if volume_spike_ratio is not None else None
+    }
