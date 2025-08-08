@@ -156,8 +156,8 @@ def run_block(block_name):
             price = tf_data.get("close")
             sr_levels = tf_data.get("sr_levels", [])
             if price and direction and sr_levels:
-            suggested = generate_suggested_tps(price, direction, sr_levels)
-            suggested_tps_by_symbol[symbol] = suggested
+                suggested = generate_suggested_tps(price, direction, sr_levels)
+                suggested_tps_by_symbol[symbol] = suggested
 
             print("📊 Sending to GPT...")
             signals_dict = asyncio.run(get_gpt_signals(data_by_symbol, suggested_tps_by_symbol, test_mode=TEST_MODE))
