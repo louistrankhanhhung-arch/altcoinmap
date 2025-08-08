@@ -200,3 +200,53 @@ def compute_short_term_momentum(candles_1h, lookback=20, pct_window=1):
         "atr_spike_ratio": round(atr_spike_ratio, 3) if atr_spike_ratio is not None else None,
         "volume_spike_ratio": round(volume_spike_ratio, 3) if volume_spike_ratio is not None else None
     }
+
+
+def _safe_series(candles, key):
+    return [c.get(key) for c in candles]
+
+def _bb_width_series(candles):
+    out = []
+    for c in candles:
+        lo = c.get("bb_lower")
+        up = c.get("bb_upper")
+        mid = c.get("bb_mid") or c.get("ma20") or c.get("close")
+        if lo is None or up is None or mid in (None, 0):
+            out.append(None)
+        else:
+            out.append((up - lo) / mid)
+    return out
+
+def _slope_from_series(series, window=5):
+    if series is None or len(series) < window + 1:
+        return None
+    tail = series[-(window+1):]
+    if any(v is None for v in tail):
+        return None
+    # simple per-bar slope (delta / window)
+    return (tail[-1] - tail[0]) / float(window)
+
+def compute_slopes(candles, window=5):
+    """
+    Tính slope (độ nghiêng) của một số chỉ báo từ chuỗi nến đã qua compute_indicators().
+    Slope = (giá trị hiện tại - giá trị cách đây 'window' nến) / window
+    Trả về: dict { 'slope_ma20', 'slope_ma50', 'slope_rsi', 'slope_bb_width', 'slope_atr' }
+    """
+    ma20_series = _safe_series(candles, "ma20")
+    ma50_series = _safe_series(candles, "ma50")
+    rsi_series = _safe_series(candles, "rsi")
+    atr_series = _safe_series(candles, "atr")
+    bb_width = _bb_width_series(candles)
+
+    slopes = {
+        "slope_ma20": _slope_from_series(ma20_series, window),
+        "slope_ma50": _slope_from_series(ma50_series, window),
+        "slope_rsi": _slope_from_series(rsi_series, window),
+        "slope_bb_width": _slope_from_series(bb_width, window),
+        "slope_atr": _slope_from_series(atr_series, window),
+    }
+    # round for compactness
+    for k, v in slopes.items():
+        if v is not None:
+            slopes[k] = round(float(v), 6 if "ma" in k else 4)
+    return slopes
