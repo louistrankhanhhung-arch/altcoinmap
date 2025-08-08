@@ -20,15 +20,16 @@ async def get_gpt_signals(data_by_symbol, suggested_tps_by_symbol, test_mode=Fal
                         continue
                 else:
                     print(f"🧪 [TEST MODE] Luôn xử lý {symbol} bất kể giờ.")
-
                 summary_lines = []
                 for tf in ["1H", "4H", "1D"]:
                     item = tf_data.get(tf, {})
                     if item:
-                        summary_lines.append(
-                            f"[{tf}] Trend: {item.get('trend')}, RSI: {item.get('rsi')}, MA20: {item.get('ma20')}, MA50: {item.get('ma50')}, Candle: {item.get('candle_signal')}, BB: ({item.get('bb_lower')}, {item.get('bb_upper')})"
-                        )
-
+                        base = f"[{tf}] Trend: {item.get('trend')}, RSI: {item.get('rsi')}, MA20: {item.get('ma20')}, MA50: {item.get('ma50')}, Candle: {item.get('candle_signal')}, BB: ({item.get('bb_lower')}, {item.get('bb_upper')})"
+                        if tf == "1H":
+                            momo = f", MOMO: pct={item.get('pct_change_1h')}, bbw={item.get('bb_width_ratio')}, atr={item.get('atr_spike_ratio')}, vol={item.get('volume_spike_ratio')}"
+                            summary_lines.append(base + momo)
+                        else:
+                            summary_lines.append(base)
                 current_price = tf_data.get("4H", {}).get("close", "N/A")
                 trend_1h = tf_data.get("1H", {}).get("trend", "unknown")
                 trend_4h = tf_data.get("4H", {}).get("trend", "unknown")
@@ -48,12 +49,13 @@ Dưới đây là dữ liệu kỹ thuật của {symbol} theo từng khung th�
 Giá hiện tại: {current_price}
 Các vùng Take Profit gợi ý theo kỹ thuật: {json_tps}
 
-Xu hướng 1H: {trend_1h}, xu hướng 4H: {trend_4h}, xu hướng 1D: {trend_1d}, RSI 4H: {rsi_4h}
+Xu hướng 1H: {trend_1h}, xu hướng 4H: {trend_4h}, xu hướng 1D: {trend_1d}, RSI 4H: {rsi_4h}\nMomentum 1H (pct, bb_width_ratio, atr_spike_ratio, volume_spike_ratio): {tf_data.get('1H', {}).get('pct_change_1h')}, {tf_data.get('1H', {}).get('bb_width_ratio')}, {tf_data.get('1H', {}).get('atr_spike_ratio')}, {tf_data.get('1H', {}).get('volume_spike_ratio')}
 
 Hãy đánh giá xem có cơ hội giao dịch không dựa trên sự đồng thuận giữa các khung thời gian, RSI, Bollinger Bands và lực nến.
 
 - Nếu không rõ xu hướng hoặc khung 4H chưa thực sự break, KHÔNG đề xuất giao dịch.
 - Nếu có tín hiệu, hãy phân loại: "trend-follow", "technical bounce", "trap setup" hoặc "breakout anticipation".
+- Xem trọng động lượng 1H: nếu momentum bùng nổ nhưng 4H/1D chưa chuyển hẳn, chỉ cho phép "breakout anticipation" với SL chặt và R:R ≥ 1.5.
 
 Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` hoặc bất kỳ chú thích, văn bản mô tả nào bên ngoài JSON. Định dạng bắt buộc:
 {{
