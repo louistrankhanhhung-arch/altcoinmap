@@ -10,6 +10,8 @@ from telegram_bot import send_message, format_message
 from signal_logger import save_signals
 from indicators import compute_indicators, generate_suggested_tps
 from signal_tracker import resolve_duplicate_signal
+from indicators import compute_indicators, generate_suggested_tps, compute_short_term_momentum
+
 
 ACTIVE_FILE = "active_signals.json"
 
