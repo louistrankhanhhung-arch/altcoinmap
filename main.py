@@ -12,7 +12,7 @@ from indicators import compute_indicators, generate_suggested_tps, compute_short
 from filters import anti_fomo_extension, rsi_regime, exhaustion_cooldown, sfp_check, multi_tf_alignment_ok, build_soft_htf_from_1h, debounce_1h_ok
 from signal_tracker import resolve_duplicate_signal
 from momentum_config import get_thresholds
-from filters import FILTERS_CONFIG
+from trade_policy import FILTERS_CONFIG
 
 
 ACTIVE_FILE = "active_signals.json"
@@ -20,6 +20,75 @@ ACTIVE_FILE = "active_signals.json"
 TF_MAP = {"1H": "1hour", "4H": "4hour", "1D": "1day"}
 
 TEST_MODE = True  # Set to False to enforce 4H candle closure
+
+
+def _estimate_eta_hours(entry, tp, atr_val, tf_hours=4):
+    try:
+        if atr_val and atr_val > 0:
+            dist = abs(tp - entry)
+            return (dist / atr_val) * tf_hours
+    except Exception:
+        pass
+    return None
+
+def _prob_hit_tp_before_sl(raw_4h, entry, sl, tp, direction, lookback=180, horizon=48):
+    """
+    Ước lượng xác suất TP trước SL bằng mô phỏng đơn giản trên dữ liệu 4H.
+    Với mỗi mốc trong quá khứ, dùng close_j làm entry giả định và đặt TP/SL theo bội số ATR tương ứng.
+    Duyệt tối đa `horizon` nến; nếu chạm TP trước thì success, chạm SL trước thì fail.
+    """
+    try:
+        n = len(raw_4h)
+        if n < lookback + horizon + 5:
+            return None
+        successes = 0
+        trials = 0
+        start_idx = max(0, n - (lookback + horizon))
+        for j in range(start_idx, n - horizon - 1):
+            base = raw_4h[j]
+            close_j = base.get("close")
+            atr_j = base.get("atr")
+            if close_j is None or atr_j is None or atr_j <= 0:
+                continue
+
+            target_mul = abs(tp - entry) / atr_j
+            stop_mul   = abs(entry - sl) / atr_j
+
+            if str(direction).lower() == "long":
+                tp_level = close_j + target_mul * atr_j
+                sl_level = close_j - stop_mul * atr_j
+                for k in range(j+1, j+1+horizon):
+                    hi = raw_4h[k].get("high"); lo = raw_4h[k].get("low")
+                    if hi is None or lo is None: 
+                        continue
+                    if lo <= sl_level:
+                        trials += 1
+                        break
+                    if hi >= tp_level:
+                        successes += 1
+                        trials += 1
+                        break
+            else:
+                tp_level = close_j - target_mul * atr_j
+                sl_level = close_j + stop_mul * atr_j
+                for k in range(j+1, j+1+horizon):
+                    hi = raw_4h[k].get("high"); lo = raw_4h[k].get("low")
+                    if hi is None or lo is None: 
+                        continue
+                    if hi >= sl_level:
+                        trials += 1
+                        break
+                    if lo <= tp_level:
+                        successes += 1
+                        trials += 1
+                        break
+
+        if trials == 0:
+            return None
+        return successes / trials
+    except Exception:
+        return None
+
 
 def safe_float(val):
     try:
@@ -232,14 +301,15 @@ def run_block(block_name):
 
             data_by_symbol[symbol] = enriched
 
-        suggested_tps_by_symbol = {}
+                suggested_tps_by_symbol = {}
         for symbol in data_by_symbol:
             tf_data = data_by_symbol[symbol].get("4H", {})
             direction = tf_data.get("trend", "sideways")
             price = tf_data.get("close")
             sr_levels = tf_data.get("sr_levels", [])
+            atr_val = tf_data.get("atr")
             if price and direction and sr_levels:
-                suggested = generate_suggested_tps(price, direction, sr_levels)
+                suggested = generate_suggested_tps(price, direction, sr_levels, atr_val=atr_val)
                 suggested_tps_by_symbol[symbol] = suggested
 
         print("📊 Sending to GPT...")
@@ -319,11 +389,39 @@ def run_block(block_name):
                 if rr < 1.2:
                     print(f"⚠️ R:R quá thấp ({rr:.2f}) cho {sym} | entry: {entry_1}, sl: {stop_loss}, tp1: {tp1}")
                     continue
-                else:
+                                else:
                     print(f"✅ R:R = {rr:.2f} cho {sym}")
             else:
                 print(f"⚠️ Không có TP1 cho {sym} -> BỎ QUA")
                 continue
+
+            # === ETA & Probability (4H-based backtest-lite) ===
+            try:
+                tp_list_vals = [v for v in (sig.get("tp") or []) if v is not None]
+                etas = []
+                probs = []
+                for tpv in tp_list_vals[:3]:
+                    eta_h = _estimate_eta_hours(entry_1, tpv, atr_val, tf_hours=4)
+                    etas.append(eta_h)
+                    p = _prob_hit_tp_before_sl(raw_4h or [], entry_1, stop_loss, tpv, direction, lookback=180, horizon=48)
+                    probs.append(p)
+
+                def _fmt(x, unit='h'):
+                    return f"{x:.0f}{unit}" if isinstance(x, (int, float)) and x is not None else "—"
+                def _fmtp(p):
+                    return f"{p*100:.0f}%" if isinstance(p, (int, float)) and p is not None else "—"
+
+                print(f"🕒 ETA: TP1={_fmt(etas[0]) if len(etas)>0 else '—'}, TP2={_fmt(etas[1]) if len(etas)>1 else '—'}, TP3={_fmt(etas[2]) if len(etas)>2 else '—'}")
+                print(f"🎯 Prob(hit): TP1={_fmtp(probs[0]) if len(probs)>0 else '—'}, TP2={_fmtp(probs[1]) if len(probs)>1 else '—'}, TP3={_fmtp(probs[2]) if len(probs)>2 else '—'}")
+
+                if len(etas)>0: sig["eta_tp1_h"] = etas[0]
+                if len(etas)>1: sig["eta_tp2_h"] = etas[1]
+                if len(etas)>2: sig["eta_tp3_h"] = etas[2]
+                if len(probs)>0: sig["prob_tp1"] = probs[0]
+                if len(probs)>1: sig["prob_tp2"] = probs[1]
+                if len(probs)>2: sig["prob_tp3"] = probs[2]
+            except Exception as _e:
+                print(f"⚠️ ETA/Prob calc error for {sym}: {_e}")
 
             sig = resolve_duplicate_signal(sig)
             try:
