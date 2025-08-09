@@ -46,7 +46,7 @@ def resolve_duplicate_signal(new_signal):
             s["status"] = "canceled"
             msg = f"\ud83d\udeab <b>{pair}</b> tín hiệu ngược hướng mới, tự động huỷ."
             send_message(msg, reply_to_id=s.get("message_id"))
-        else:
+            else:
             # Cùng hướng -> đánh dấu là resignal, giữ lại
             new_signal["assessment"] = "Resignal - tín hiệu mở rộng"
         updated_signals.append(s)
@@ -88,10 +88,8 @@ def check_signals():
                     signal["status"] = "timeout"
                     if message_id:
                         send_message(f"\u26a0\ufe0f <b>{pair}</b> \u0111\u00e3 timeout sau 12 gi\u1edd kh\u00f4ng v\u00e0o l\u1ec7nh.", reply_to_id=message_id)
-            signal['timeout_sent'] = True
-                    else:
+                        else:
                         send_message(f"\u26a0\ufe0f <b>{pair}</b> \u0111\u00e3 timeout sau 12 gi\u1edd kh\u00f4ng v\u00e0o l\u1ec7nh.")
-            signal['timeout_sent'] = True
                     updated_signals.append(signal)
                     continue
 
@@ -99,7 +97,7 @@ def check_signals():
                 signal["status"] = "stopped"
                 if message_id:
                     send_message(f"\ud83d\udea9 <b>{pair}</b> \u0111\u00e3 hit Stop Loss \u1edf {price:,.2f}", reply_to_id=message_id)
-                else:
+                    else:
                     send_message(f"\ud83d\udea9 <b>{pair}</b> \u0111\u00e3 hit Stop Loss \u1edf {price:,.2f}")
                 updated_signals.append(signal)
                 continue
@@ -124,7 +122,7 @@ def check_signals():
                     hit_tp.append(i + 1)
                     if message_id:
                         send_message(f"\u2705 <b>{pair}</b> \u0111\u00e3 \u0111\u1ea1t TP{i + 1} \u1edf {price:,.2f}", reply_to_id=message_id)
-                    else:
+                        else:
                         send_message(f"\u2705 <b>{pair}</b> \u0111\u00e3 \u0111\u1ea1t TP{i + 1} \u1edf {price:,.2f}")
                     tp_hit = True
 
@@ -134,7 +132,7 @@ def check_signals():
                     signal["status"] = "closed"
                     if message_id:
                         send_message(f"\ud83c\udfaf <b>{pair}</b> \u0111\u00e3 ho\u00e0n th\u00e0nh t\u1ea5t c\u1ea3 m\u1ee5c ti\u00eau v\u00e0 \u0111\u00f3ng l\u1ec7nh.", reply_to_id=message_id)
-                    else:
+                        else:
                         send_message(f"\ud83c\udfaf <b>{pair}</b> \u0111\u00e3 ho\u00e0n th\u00e0nh t\u1ea5t c\u1ea3 m\u1ee5c ti\u00eau v\u00e0 \u0111\u00f3ng l\u1ec7nh.")
 
             updated_signals.append(signal)
@@ -232,7 +230,7 @@ def send_daily_report_if_due():
             tops = "\n".join([f"  - {k}: {v}%" for k,v in agg["by_pair"].items()])
             lines.append("• Top đóng góp:\n" + tops)
         msg = "\n".join(lines)
-    else:
+        else:
         msg = f"📊 <b>BÁO CÁO PnL 24H</b>: Không có sự kiện chốt trong 24h qua."
 
     send_message(msg)
