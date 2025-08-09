@@ -1,5 +1,14 @@
 import json
 import os
+
+# --- Added: Prevent repeated timeout notifications ---
+def mark_timeout_sent(signal):
+    signal['timeout_notified'] = True
+    return signal
+
+def should_notify_timeout(signal):
+    return not signal.get('timeout_notified', False)
+
 from datetime import datetime, timedelta, timezone
 from kucoin_api import fetch_realtime_price
 from telegram_bot import send_message
