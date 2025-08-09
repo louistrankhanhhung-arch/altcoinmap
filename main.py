@@ -14,73 +14,6 @@ from signal_tracker import resolve_duplicate_signal
 from momentum_config import get_thresholds
 from filters import FILTERS_CONFIG
 
-TIMEOUT_TTL_HOURS = 12  # TTL để huỷ tín hiệu nếu không khớp entry trong thời gian này
-
-def _parse_iso(dt_str):
-    try:
-        # Hỗ trợ cả định dạng có/không có 'Z'
-        if dt_str.endswith('Z'):
-            dt_str = dt_str.replace('Z', '+00:00')
-        return datetime.fromisoformat(dt_str)
-    except Exception:
-        return None
-
-def process_timeouts(ttl_hours=TIMEOUT_TTL_HOURS):
-    """
-    Gửi thông báo timeout CHỈ MỘT LẦN cho mỗi tín hiệu mở quá TTL giờ mà chưa khớp entry.
-    Đánh dấu timeout_notified để lần quét sau không gửi lại.
-    Đồng thời chuyển status -> 'canceled'.
-    """
-    try:
-        with open(ACTIVE_FILE, "r") as f:
-            active = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return
-
-    if not isinstance(active, list):
-        return
-
-    now = datetime.now(UTC)
-    changed = False
-    for s in active:
-        status = s.get("status", "open")
-        if status != "open":
-            continue
-        if s.get("timeout_notified"):
-            continue
-        sent_at = s.get("sent_at")
-        if not sent_at:
-            continue
-        sent_dt = _parse_iso(sent_at)
-        if not sent_dt:
-            continue
-        elapsed_h = (now - sent_dt).total_seconds() / 3600.0
-        if elapsed_h >= ttl_hours:
-            pair = s.get("pair") or s.get("symbol") or s.get("ticker") or "UNKNOWN"
-            try:
-                msg = f"⚠️ <b>{pair}</b> đã timeout sau {ttl_hours} giờ không vào lệnh."
-                send_message(msg)
-            except Exception as e:
-                print(f"⚠️ Lỗi gửi thông báo timeout cho {pair}: {e}")
-            s["status"] = "canceled"
-            s["timeout_notified"] = True
-            try:
-                active.remove(s)
-            except ValueError:
-                pass
-            s["timeout_at"] = now.isoformat()
-            changed = True
-
-    if changed:
-        try:
-            with open(ACTIVE_FILE, "w") as f:
-                # loại bỏ các lệnh đã timeout để không bị gửi lại ở lần quét sau
-                active_filtered = [x for x in active if not x.get("timeout_notified")]
-                json.dump(active_filtered, f, indent=2)
-        except Exception as e:
-            print(f"⚠️ Không thể lưu ACTIVE_FILE sau khi đánh dấu timeout: {e}")
-
-
 
 ACTIVE_FILE = "active_signals.json"
 
@@ -509,8 +442,6 @@ def run_block(block_name):
         send_message(f"⚠️ Lỗi khi chạy hệ thống với {block_name}: {str(e)}")
 
 def main():
-    # Kiểm tra và gửi timeout một lần cho các lệnh quá hạn
-    process_timeouts()
     now = datetime.now(UTC)
     print(f"\n⏰ [UTC {now.strftime('%Y-%m-%d %H:%M:%S')}] Running scheduled scan...")
 
