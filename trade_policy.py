@@ -32,3 +32,27 @@ def atr_regime_rr_min(atr_value, price):
         if atr_pct < limit:
             return rr_min
     return DEFAULT_MIN_RR
+
+# === Runtime filters configuration ===
+FILTERS_CONFIG = {
+    "multi_tf_confirm": True,
+    "tf_confirm_main": "4H",
+    "tf_confirm_threshold": 0.2,
+
+    "enable_rsi_regime": True,
+    "enable_anti_fomo": True,
+    "enable_exhaustion_cooldown": True,
+    "enable_sfp": True,
+
+    "enable_breakout_retest": "auto",
+    "slope_strong_threshold": 0.5,
+    "retest_max_candles": 3,
+
+    "anti_fomo_dist_atr": 1.5,
+    "rsi_overheat": 75,
+    "rsi_distance_atr": 1.2,
+    "exhaustion_atr_spike": 1.8,
+    "exhaustion_vol_spike": 1.8,
+    "sfp_lookback": 20,
+}
+
