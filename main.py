@@ -389,7 +389,7 @@ def run_block(block_name):
                 if rr < 1.2:
                     print(f"⚠️ R:R quá thấp ({rr:.2f}) cho {sym} | entry: {entry_1}, sl: {stop_loss}, tp1: {tp1}")
                     continue
-                                else:
+                else:
                     print(f"✅ R:R = {rr:.2f} cho {sym}")
             else:
                 print(f"⚠️ Không có TP1 cho {sym} -> BỎ QUA")
