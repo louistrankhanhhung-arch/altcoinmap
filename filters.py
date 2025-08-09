@@ -9,7 +9,7 @@ FILTERS_CONFIG = {
 # Multi‑TF alignment (1H vs 4H)
     "multi_tf_confirm": True,
     "tf_confirm_main": "4H",
-    "tf_confirm_threshold": 0.2,
+    "tf_confirm_threshold": 0,
 # Core anti-trap filters
     "enable_rsi_regime": True,
     "enable_anti_fomo": True,
@@ -111,34 +111,54 @@ def breakout_retest_ok(candles_tf: list, breakout_zone: tuple, cfg: dict) -> tup
             return True, "bear_retest"
     return False, "no_retest"
 
+
 def multi_tf_alignment_ok(candles_fast: list, candles_slow: list, cfg: dict) -> tuple:
     """
-    Kiểm tra momentum của TF nhanh (vd: 1H) có cùng hướng TF chậm (vd: 4H) hay không.
-    candles_fast: danh sách nến TF nhanh
-    candles_slow: danh sách nến TF chậm
-    cfg: FILTERS_CONFIG
+    Kiểm tra momentum 1H có cùng hướng TF chậm (4H/soft) hay không.
+    - Nếu tf_confirm_threshold <= 0 => chỉ kiểm tra HƯỚNG (direction-only), không yêu cầu độ lớn.
     """
     if not cfg.get("multi_tf_confirm", False):
         return True, "skip"
-    threshold = cfg.get("tf_confirm_threshold", 0.2)
+    threshold = cfg.get("tf_confirm_threshold", 0.0)
 
     def slope_ma20(candles):
         closes = [c.get("close") for c in candles if c.get("close") is not None]
         if len(closes) >= 21:
             ma20_vals = [sum(closes[i:i+20])/20 for i in range(len(closes)-19)]
             if len(ma20_vals) >= 2:
-                return (ma20_vals[-1] - ma20_vals[-2]) / ma20_vals[-2]
-        return 0
-# Cho phép dùng 4H mềm nếu bật cấu hình hoặc không có 4H thật
+                last, prev = ma20_vals[-1], ma20_vals[-2]
+                return (last - prev) / (prev if prev else 1.0)
+        return 0.0
+
+    # Cho phép dùng 4H mềm nếu bật cấu hình hoặc không có 4H thật
     if cfg.get("use_soft_4h", True) and (not candles_slow or len(candles_slow) < 5):
         proxy = build_soft_htf_from_1h(candles_fast, group=4)
         candles_slow = proxy if proxy else candles_slow
+
     slope_fast = slope_ma20(candles_fast)
     slope_slow = slope_ma20(candles_slow)
 
-    if slope_fast * slope_slow < 0:  # trái hướng
+    # Direction-only mode
+    if threshold is None or threshold <= 0:
+        if slope_fast * slope_slow < 0:
+            return False, f"opposite slopes {slope_fast:.3f} vs {slope_slow:.3f}"
+        # fallback: nếu slope_slow ~0, dùng quan hệ với MA20
+        def above_ma20(candles):
+            closes = [c.get("close") for c in candles if c.get("close") is not None]
+            if len(closes) < 21:
+                return None
+            ma20 = sum(closes[-20:]) / 20.0
+            return closes[-1] > ma20
+        slow_bias = above_ma20(candles_slow)
+        fast_bias = above_ma20(candles_fast)
+        if slow_bias is not None and fast_bias is not None and (slow_bias != fast_bias):
+            return False, "direction mismatch by MA20"
+        return True, f"aligned by direction (slow_slope={slope_slow:.3f})"
+
+    # Magnitude mode (old behavior)
+    if slope_fast * slope_slow < 0:
         return False, f"opposite slopes {slope_fast:.3f} vs {slope_slow:.3f}"
-    if abs(slope_slow) < threshold:  # trend chậm chưa đủ mạnh
+    if abs(slope_slow) < threshold:
         return False, f"weak slow slope {slope_slow:.3f}"
     return True, f"aligned slopes {slope_fast:.3f} vs {slope_slow:.3f}"
 
@@ -153,7 +173,7 @@ def build_soft_htf_from_1h(candles_1h: list, group: int = 4, limit: int = 60) ->
 # dùng các field: open, high, low, close
     n = len(candles_1h)
     start = max(0, n - limit*group)
-    for i in range(start, n, group):
+    for i in range(start+group-1, n):
         chunk = candles_1h[max(0, i-group+1):i+1]  # rolling 4 nến gần nhất
         if len(chunk) < group:
             continue
