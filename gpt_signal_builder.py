@@ -118,7 +118,18 @@ Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` ho�
     return results
 
 BLOCKS = {
-    "block1": ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT"],
-    "block2": ["LINK/USDT", "NEAR/USDT", "AVAX/USDT", "ARB/USDT"],
-    "block3": ["SUI/USDT", "PENDLE/USDT", "INJ/USDT"]
+    "block1": [
+        "BTC/USDT", "ETH/USDT", "BNB/USDT", "SOL/USDT",
+        "LINK/USDT", "AVAX/USDT",
+        "ATOM/USDT", "AAVE/USDT", "UNI/USDT",
+    ],
+    "block2": [
+        "NEAR/USDT", "INJ/USDT", "ARB/USDT", "SUI/USDT", "PENDLE/USDT",
+        "OP/USDT", "APT/USDT", "STRK/USDT", "DYDX/USDT",
+    ],
+    "block3": [
+        "GMX/USDT", "FIL/USDT", "RNDR/USDT", "FET/USDT",
+        "TIA/USDT", "ENS/USDT", "ADA/USDT", "TRX/USDT", "RPL/USDT",
+    ],
 }
+
