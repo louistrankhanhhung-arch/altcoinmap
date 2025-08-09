@@ -106,7 +106,7 @@ def check_signals():
                 signal["status"] = "stopped"
                 if message_id:
                     send_message(f"\ud83d\udea9 <b>{pair}</b> \u0111\u00e3 hit Stop Loss \u1edf {price:,.2f}", reply_to_id=message_id)
-                    else:
+                else:
                     send_message(f"\ud83d\udea9 <b>{pair}</b> \u0111\u00e3 hit Stop Loss \u1edf {price:,.2f}")
                 updated_signals.append(signal)
                 continue
