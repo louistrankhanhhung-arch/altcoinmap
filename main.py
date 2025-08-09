@@ -13,6 +13,13 @@ from indicators import compute_indicators, generate_suggested_tps, compute_short
 from signal_tracker import resolve_duplicate_signal
 from momentum_config import allowed_policies_for, get_thresholds, thresholds_for
 
+def safe_float(value, default=None):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 
 ACTIVE_FILE = "active_signals.json"
 
