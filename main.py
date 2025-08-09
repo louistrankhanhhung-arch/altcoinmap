@@ -64,13 +64,19 @@ def process_timeouts(ttl_hours=TIMEOUT_TTL_HOURS):
                 print(f"⚠️ Lỗi gửi thông báo timeout cho {pair}: {e}")
             s["status"] = "canceled"
             s["timeout_notified"] = True
+            try:
+                active.remove(s)
+            except ValueError:
+                pass
             s["timeout_at"] = now.isoformat()
             changed = True
 
     if changed:
         try:
             with open(ACTIVE_FILE, "w") as f:
-                json.dump(active, f, indent=2)
+                # loại bỏ các lệnh đã timeout để không bị gửi lại ở lần quét sau
+                active_filtered = [x for x in active if not x.get("timeout_notified")]
+                json.dump(active_filtered, f, indent=2)
         except Exception as e:
             print(f"⚠️ Không thể lưu ACTIVE_FILE sau khi đánh dấu timeout: {e}")
 
