@@ -128,7 +128,7 @@ BLOCKS = {
         "OP/USDT", "APT/USDT", "STRK/USDT", "DYDX/USDT",
     ],
     "block3": [
-        "GMX/USDT", "FIL/USDT", "RNDR/USDT", "FET/USDT",
+        "GMX/USDT", "FIL/USDT", "FET/USDT",
         "TIA/USDT", "ENS/USDT", "ADA/USDT", "TRX/USDT", "RPL/USDT",
     ],
 }
