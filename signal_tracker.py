@@ -131,7 +131,7 @@ def check_signals():
                     hit_tp.append(i + 1)
                     if message_id:
                         send_message(f"\u2705 <b>{pair}</b> \u0111\u00e3 \u0111\u1ea1t TP{i + 1} \u1edf {price:,.2f}", reply_to_id=message_id)
-                        else:
+                    else:
                         send_message(f"\u2705 <b>{pair}</b> \u0111\u00e3 \u0111\u1ea1t TP{i + 1} \u1edf {price:,.2f}")
                     tp_hit = True
 
@@ -141,7 +141,7 @@ def check_signals():
                     signal["status"] = "closed"
                     if message_id:
                         send_message(f"\ud83c\udfaf <b>{pair}</b> \u0111\u00e3 ho\u00e0n th\u00e0nh t\u1ea5t c\u1ea3 m\u1ee5c ti\u00eau v\u00e0 \u0111\u00f3ng l\u1ec7nh.", reply_to_id=message_id)
-                        else:
+                    else:
                         send_message(f"\ud83c\udfaf <b>{pair}</b> \u0111\u00e3 ho\u00e0n th\u00e0nh t\u1ea5t c\u1ea3 m\u1ee5c ti\u00eau v\u00e0 \u0111\u00f3ng l\u1ec7nh.")
 
             updated_signals.append(signal)
