@@ -2,6 +2,38 @@
 # Bộ tiêu chí hạn chế bull/bear trap & quá mua/quá bán sâu.
 from typing import Dict, Tuple, List
 
+
+# === Runtime filters configuration (centralized here to avoid circular imports) ===
+FILTERS_CONFIG = {
+    # Soft confirmations for hourly scanning
+    "use_soft_4h": True,
+    "debounce_1h_bars": 2,
+
+    # Multi‑TF alignment (1H vs 4H)
+    "multi_tf_confirm": True,
+    "tf_confirm_main": "4H",
+    "tf_confirm_threshold": 0.2,
+
+    # Core anti-trap filters
+    "enable_rsi_regime": True,
+    "enable_anti_fomo": True,
+    "enable_exhaustion_cooldown": True,
+    "enable_sfp": True,
+
+    # Breakout retest behavior
+    "enable_breakout_retest": "auto",  # "auto" | "on" | "off"
+    "slope_strong_threshold": 0.5,     # in AUTO mode, if |slope| > this, skip retest
+    "retest_max_candles": 3,
+
+    # Thresholds
+    "anti_fomo_dist_atr": 1.5,
+    "rsi_overheat": 75,
+    "rsi_distance_atr": 1.2,
+    "exhaustion_atr_spike": 1.8,
+    "exhaustion_vol_spike": 1.8,
+    "sfp_lookback": 20,
+}
+
 def anti_fomo_extension(snapshot: Dict, cfg: Dict) -> Tuple[bool, str]:
     close = snapshot.get("close"); atr = snapshot.get("atr14") or snapshot.get("atr"); ma20 = snapshot.get("ma20")
     if close is None or atr in (None, 0) or ma20 is None:
