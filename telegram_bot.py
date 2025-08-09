@@ -68,18 +68,13 @@ def send_message_with_retry(text, reply_to_id=None, retries=3):
     return None
 
 decimal_map = {
-    "BTC": 2,
-    "ETH": 2,
-    "BNB": 2,
-    "AVAX": 2,
-    "LINK": 2,
-    "INJ": 2,
-    "NEAR": 3,
-    "PENDLE": 3,
-    "ARB": 4,
-    "SUI": 4,
+    # MAJORS
+    "BTC": 2, "ETH": 2, "BNB": 2, "SOL": 2, "ADA": 4, "TRX": 5,
+    # LARGE CAP ALTS
+    "LINK": 2, "AVAX": 2, "NEAR": 3, "INJ": 2, "ATOM": 2, "AAVE": 2, "UNI": 2, "FIL": 2, "RNDR": 2,
+    # MID CAP ALTS
+    "ARB": 4, "SUI": 4, "PENDLE": 3, "APT": 3, "OP": 3, "STRK": 3, "DYDX": 3, "GMX": 2, "TIA": 3, "ENS": 2, "FET": 3, "RPL": 3,
 }
-
 def format_price(val, symbol="BTC"):
     try:
         if val is None:
