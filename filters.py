@@ -105,6 +105,10 @@ def multi_tf_alignment_ok(candles_fast: list, candles_slow: list, cfg: dict) -> 
                 return (ma20_vals[-1] - ma20_vals[-2]) / ma20_vals[-2]
         return 0
 
+        # Cho phép dùng 4H mềm nếu bật cấu hình hoặc không có 4H thật
+    if cfg.get("use_soft_4h", True) and (not candles_slow or len(candles_slow) < 5):
+        proxy = build_soft_htf_from_1h(candles_fast, group=4)
+        candles_slow = proxy if proxy else candles_slow
     slope_fast = slope_ma20(candles_fast)
     slope_slow = slope_ma20(candles_slow)
 
@@ -113,3 +117,52 @@ def multi_tf_alignment_ok(candles_fast: list, candles_slow: list, cfg: dict) -> 
     if abs(slope_slow) < threshold:  # trend chậm chưa đủ mạnh
         return False, f"weak slow slope {slope_slow:.3f}"
     return True, f"aligned slopes {slope_fast:.3f} vs {slope_slow:.3f}"
+
+def build_soft_htf_from_1h(candles_1h: list, group: int = 4, limit: int = 60) -> list:
+    """
+    Gộp 4 cây 1H đã đóng thành 1 cây 4H proxy (rolling).
+    Trả về danh sách "nến 4H mềm" (không tính lại full indicator).
+    """
+    if not candles_1h or len(candles_1h) < group:
+        return []
+    soft = []
+    # dùng các field: open, high, low, close
+    n = len(candles_1h)
+    start = max(0, n - limit*group)
+    for i in range(start, n, group):
+        chunk = candles_1h[max(0, i-group+1):i+1]  # rolling 4 nến gần nhất
+        if len(chunk) < group:
+            continue
+        open_ = chunk[0].get("open")
+        close_ = chunk[-1].get("close")
+        highs = [c.get("high") for c in chunk if c.get("high") is not None]
+        lows = [c.get("low") for c in chunk if c.get("low") is not None]
+        if open_ is None or close_ is None or not highs or not lows:
+            continue
+        soft.append({"open": open_, "close": close_, "high": max(highs), "low": min(lows)})
+    return soft
+
+def debounce_1h_ok(candles_1h: list, bars: int = 2) -> tuple:
+    """
+    Yêu cầu 'bars' nến 1H gần nhất có slope MA20 cùng dấu (xấp xỉ bằng slope(close)).
+    """
+    closes = [c.get("close") for c in candles_1h if c.get("close") is not None]
+    if len(closes) < max(21, bars+1):
+        return True, "insufficient"
+    # slope gần đúng: so sánh MA20 gần nhất với trước đó
+    ma20_vals = [sum(closes[i:i+20])/20 for i in range(len(closes)-19)]
+    if len(ma20_vals) < bars+1:
+        return True, "insufficient"
+    signs = []
+    for k in range(1, bars+1):
+        prev, cur = ma20_vals[-k-1], ma20_vals[-k]
+        if prev == 0:
+            signs.append(0)
+        else:
+            slope = (cur - prev) / abs(prev)
+            signs.append(1 if slope > 0 else (-1 if slope < 0 else 0))
+    if 0 in signs:
+        return False, "flat momentum"
+    if not all(s == signs[0] for s in signs):
+        return False, f"mixed slopes {signs}"
+    return True, "ok"
