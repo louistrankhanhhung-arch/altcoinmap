@@ -79,9 +79,9 @@ Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` ho�
 - Chỉ trả về JSON đúng chuẩn như trên, KHÔNG thêm bất kỳ ký tự lạ, mô tả hay định dạng markdown nào.
 - Không sử dụng emoji hoặc ký tự đặc biệt trong output. 
 - Chỉ sử dụng ký tự ASCII chuẩn hoặc ký tự chữ/số thông thường. Không sử dụng ký tự Unicode ngoài tiếng Việt và tiếng Anh.
-- Các trường `entry_1`, `entry_2`, `stop_loss`, `tp` PHẢI là số (float), KHÔNG để trong ngoặc kép.
+- `entry_1` và `stop_loss` PHẢI là số (float). `entry_2` CÓ THỂ để `null` nếu không có vùng DCA an toàn. `tp` là danh sách số.
 - `tp` phải là một danh sách các số (mảng số thực).
-- Không được thiếu bất kỳ trường nào trong JSON trên.
+- Tất cả trường trên đều nên có; RIÊNG `entry_2` có thể bỏ qua hoặc để `null` nếu không phù hợp.
 """
 
                 now = datetime.now(UTC)
