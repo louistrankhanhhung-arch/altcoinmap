@@ -6,16 +6,19 @@ import time
 from datetime import datetime, UTC
 from gpt_signal_builder import get_gpt_signals, BLOCKS
 from kucoin_api import fetch_coin_data
+from eligibility import check_short_bias
 from telegram_bot import send_message, format_message
 from signal_logger import save_signals
-from indicators import compute_indicators, generate_suggested_tps, compute_short_term_momentum
+from indicators import compute_indicators, generate_suggested_tps, compute_short_term_momentum, compute_slopes
 from signal_tracker import resolve_duplicate_signal
-from momentum_config import get_thresholds
+from momentum_config import get_thresholds, thresholds_for, allowed_policies_for
 
 
 ACTIVE_FILE = "active_signals.json"
 
 TF_MAP = {"1H": "1hour", "4H": "4hour", "1D": "1day"}
+
+LIMIT_MAP = {"1H": 60, "4H": 80, "1D": 100}
 
 TEST_MODE = True  # Set to False to enforce 4H candle closure
 
@@ -116,7 +119,7 @@ def run_block(block_name):
         raw_data_by_symbol = {}
         for symbol in symbols:
             raw_data = {
-                tf: fetch_coin_data(symbol, interval=TF_MAP[tf]) for tf in TF_MAP
+                tf: fetch_coin_data(symbol, interval=TF_MAP[tf], limit=LIMIT_MAP.get(tf, 100)) for tf in TF_MAP
             }
             raw_data_by_symbol[symbol] = raw_data
             enriched = {}
@@ -124,11 +127,21 @@ def run_block(block_name):
                 candles = compute_indicators(raw_data[tf])
                 trend = classify_trend(candles)
                 signal = detect_candle_signal(candles)
+                slopes = compute_slopes(candles, window=5)
                 enriched[tf] = {
                     "trend": trend,
                     "candle_signal": signal,
                     **candles[-1]
                 }
+
+# Short-bias guard (1D)
+try:
+    eligible, diag = check_short_bias(compute_indicators(raw_data["1D"]))
+    if not eligible:
+        print(f"[ELIGIBILITY] {symbol} filtered by short-bias guard: {diag}")
+        continue
+except Exception as _e:
+    print(f"[ELIGIBILITY] check failed for {symbol}: {_e}")
             # Gắn động lượng 1H
             if "1H" in raw_data:
                 try:
