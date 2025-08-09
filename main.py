@@ -16,6 +16,41 @@ from momentum_config import get_thresholds
 
 ACTIVE_FILE = "active_signals.json"
 
+
+def _estimate_eta_hours(entry, tp, candles_1h: list, snap_1h: dict, min_speed_factor=0.6):
+    if entry is None or tp is None or not candles_1h:
+        return None
+    closes = [c.get("close") for c in candles_1h if c.get("close") is not None]
+    if len(closes) < 26:
+        return None
+    diffs = [abs(closes[i]-closes[i-1]) for i in range(1, len(closes))]
+    avg_abs = sum(diffs[-24:]) / min(24, len(diffs)) if diffs else None
+    atr_1h = candles_1h[-1].get("atr")
+    if avg_abs in (None, 0) and (atr_1h in (None, 0)):
+        return None
+    base_speed = max(avg_abs or 0, (min_speed_factor * atr_1h) if atr_1h else 0.0)
+    if base_speed <= 0:
+        return None
+    distance = abs(tp - entry)
+    ma20_vals = [c.get("ma20") for c in candles_1h if c.get("ma20") is not None]
+    drift = 0.0
+    if len(ma20_vals) >= 2:
+        last, prev = ma20_vals[-1], ma20_vals[-2]
+        drift = (last - prev) / (prev if prev else 1.0)
+    if snap_1h and snap_1h.get("trend") in ("uptrend","downtrend"):
+        towards = (tp > entry) if snap_1h["trend"] == "uptrend" else (tp < entry)
+        if drift != 0 and towards:
+            adj = 0.85 if drift > 0 else 1.15
+            base_eta = distance / base_speed * adj
+        elif drift != 0 and not towards:
+            adj = 1.2 if drift > 0 else 0.9
+            base_eta = distance / base_speed * adj
+        else:
+            base_eta = distance / base_speed
+    else:
+        base_eta = distance / base_speed
+    return round(float(base_eta), 2)
+
 TF_MAP = {"1H": "1hour", "4H": "4hour", "1D": "1day"}
 
 TEST_MODE = True  # Set to False to enforce 4H candle closure
@@ -115,6 +150,7 @@ def run_block(block_name):
         print("📥 Fetching market data...")
         data_by_symbol = {}
         raw_data_by_symbol = {}
+        candles_map_by_symbol = {}
         for symbol in symbols:
             raw_data = {
                 tf: fetch_coin_data(symbol, interval=TF_MAP[tf]) for tf in TF_MAP
@@ -132,6 +168,8 @@ def run_block(block_name):
                     "candle_signal": signal,
                     **candles[-1]
                 }
+            candles_map_by_symbol[symbol] = candles_map
+
             # Gắn động lượng 1H
             if "1H" in raw_data:
                 try:
@@ -323,6 +361,26 @@ def run_block(block_name):
             else:
                 print(f"⚠️ Không có TP1 cho {sym} -> BỎ QUA")
                 continue
+
+            # --- ETA estimation (log only) ---
+            try:
+                cm = candles_map_by_symbol.get(sym, {})
+                candles_1h_series = cm.get("1H", [])
+                snap_1h = data_by_symbol.get(sym, {}).get("1H", {})
+                if tp1 is not None and entry_1 is not None:
+                    eta1 = _estimate_eta_hours(entry_1, tp1, candles_1h_series, snap_1h)
+                    sig["eta_hours_tp1"] = eta1
+                if isinstance(tp_list, list) and len(tp_list) >= 2:
+                    tp2 = tp_list[1]
+                    eta2 = _estimate_eta_hours(entry_1, tp2, candles_1h_series, snap_1h)
+                    sig["eta_hours_tp2"] = eta2
+                if isinstance(tp_list, list) and len(tp_list) >= 3:
+                    tp3 = tp_list[2]
+                    eta3 = _estimate_eta_hours(entry_1, tp3, candles_1h_series, snap_1h)
+                    sig["eta_hours_tp3"] = eta3
+                print(f"🕒 ETA {sym}: TP1={sig.get('eta_hours_tp1')}h, TP2={sig.get('eta_hours_tp2')}h, TP3={sig.get('eta_hours_tp3')}h")
+            except Exception as _e:
+                print(f"⚠️ ETA calc error for {sym}: {_e}")
 
             sig = resolve_duplicate_signal(sig)
             try:
