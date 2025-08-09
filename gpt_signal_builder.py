@@ -92,7 +92,6 @@ Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` ho�
                 response = await client.chat.completions.create(
                     model=GPT_MODEL,
                     messages=[{"role": "user", "content": prompt.strip()}],
-                    temperature=0.4,
                     max_completion_tokens=1200,
                     timeout=30
                 )
