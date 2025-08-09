@@ -18,6 +18,20 @@ from kucoin_api import fetch_coin_data
 ACTIVE_FILE = "active_signals.json"
 
 
+def _thread_id_for(pair, current_msg_id):
+    if current_msg_id:
+        return current_msg_id
+    # fallback: tìm message_id gần nhất của cùng pair trong file (nếu có)
+    try:
+        for s in load_active_signals():
+            if s.get("pair")==pair and s.get("message_id"):
+                return s.get("message_id")
+    except Exception:
+        pass
+    return None
+
+
+
 def load_active_signals():
     if not os.path.exists(ACTIVE_FILE):
         return []
@@ -31,6 +45,34 @@ def load_active_signals():
 def save_active_signals(signals):
     with open(ACTIVE_FILE, "w") as f:
         json.dump(signals, f, indent=2)
+
+
+
+
+def _dedupe_latest_open(signals):
+    """
+    Trả về danh sách chỉ giữ lại tín hiệu 'open' mới nhất cho mỗi pair.
+    Các tín hiệu trùng pair cũ hơn sẽ được chuyển sang trạng thái 'superseded' (không gửi thông báo).
+    Ưu tiên bản có sent_at mới nhất; nếu không có, ưu tiên phần tử nằm trước (mới ghi hơn).
+    """
+    result = []
+    seen = {}
+    # duyệt từ đầu danh sách (vì file được prepend bản mới)
+    for s in signals:
+        pair = s.get("pair")
+        if not pair:
+            result.append(s); continue
+        status = s.get("status", "open")
+        if status != "open":
+            result.append(s); continue
+        # nếu đã có pair này trong seen -> mark superseded
+        if pair in seen:
+            s["status"] = "superseded"
+            result.append(s)
+            continue
+        seen[pair] = True
+        result.append(s)
+    return result
 
 
 def resolve_duplicate_signal(new_signal):
@@ -67,7 +109,7 @@ def resolve_duplicate_signal(new_signal):
 
 
 def check_signals():
-    active_signals = load_active_signals()
+    active_signals = _dedupe_latest_open(load_active_signals())
     updated_signals = []
     now = datetime.now(timezone.utc)
 
@@ -96,7 +138,7 @@ def check_signals():
             if sl is not None and ((direction == "long" and price <= sl) or (direction == "short" and price >= sl)):
                 signal["status"] = "stopped"
                 if message_id:
-                    send_message(f"🚩 <b>{pair}</b> đã hit Stop Loss ở {price:,.2f}", reply_to_id=message_id)
+                    send_message(f"🚩 <b>{pair}</b> đã hit Stop Loss ở {price:,.2f}", reply_to_id=_thread_id_for(pair, message_id))
                 else:
                     send_message(f"🚩 <b>{pair}</b> đã hit Stop Loss ở {price:,.2f}")
                 updated_signals.append(signal)
@@ -109,7 +151,7 @@ def check_signals():
                 new_trend = classify_trend(enriched)
                 if (direction == "long" and new_trend == "downtrend") or (direction == "short" and new_trend == "uptrend"):
                     signal["status"] = "reversed"
-                    send_message(f"↩️ <b>{pair}</b> đã đảo chiều xu hướng. Lệnh {direction.title()} bị huỷ.", reply_to_id=message_id)
+                    send_message(f"↩️ <b>{pair}</b> đã đảo chiều xu hướng. Lệnh {direction.title()} bị huỷ.", reply_to_id=_thread_id_for(pair, message_id))
                     updated_signals.append(signal)
                     continue
             except Exception as err:
@@ -123,7 +165,7 @@ def check_signals():
                 if (direction == "long" and price >= tp) or (direction == "short" and price <= tp):
                     hit_tp.append(i + 1)
                     if message_id:
-                        send_message(f"✅ <b>{pair}</b> đã đạt TP{i + 1} ở {price:,.2f}", reply_to_id=message_id)
+                        send_message(f"✅ <b>{pair}</b> đã đạt TP{i + 1} ở {price:,.2f}", reply_to_id=_thread_id_for(pair, message_id))
                     else:
                         send_message(f"✅ <b>{pair}</b> đã đạt TP{i + 1} ở {price:,.2f}")
                     tp_hit = True
@@ -133,7 +175,7 @@ def check_signals():
                 if len(hit_tp) == len(tps):
                     signal["status"] = "closed"
                     if message_id:
-                        send_message(f"🎯 <b>{pair}</b> đã hoàn thành tất cả mục tiêu và đóng lệnh.", reply_to_id=message_id)
+                        send_message(f"🎯 <b>{pair}</b> đã hoàn thành tất cả mục tiêu và đóng lệnh.", reply_to_id=_thread_id_for(pair, message_id))
                     else:
                         send_message(f"🎯 <b>{pair}</b> đã hoàn thành tất cả mục tiêu và đóng lệnh.")
 
