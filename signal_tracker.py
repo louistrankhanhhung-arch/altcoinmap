@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from kucoin_api import fetch_realtime_price
 from telegram_bot import send_message
 from indicators import classify_trend, compute_indicators
@@ -29,7 +29,7 @@ def resolve_duplicate_signal(new_signal):
     updated_signals = []
     new_pair = new_signal.get("pair")
     new_direction = new_signal.get("direction", "").lower()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     resolved = False
 
     for s in active_signals:
@@ -60,7 +60,7 @@ def resolve_duplicate_signal(new_signal):
 def check_signals():
     active_signals = load_active_signals()
     updated_signals = []
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     for signal in active_signals:
         try:
@@ -72,7 +72,9 @@ def check_signals():
             entry_2 = signal["entry_2"]
             sl = signal["stop_loss"]
             tps = signal["tp"]
-            sent_time = datetime.fromisoformat(signal["sent_at"])
+            sent_time = datetime.fromisoformat(signal["sent_at"]) or datetime.now(timezone.utc)
+            if sent_time.tzinfo is None:
+                sent_time = sent_time.replace(tzinfo=timezone.utc)
             status = signal.get("status", "open")
             hit_tp = signal.get("hit_tp", [])
             message_id = signal.get("message_id")
