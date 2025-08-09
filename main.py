@@ -166,6 +166,7 @@ def detect_candle_signal(candles):
     return "none"
 
 def run_block(block_name):
+    timeout_sent = {}  # Track timeout messages per symbol
     if TEST_MODE:
         print(f"⏳ [TEST MODE] Bỏ qua kiểm tra giờ, luôn chạy block {block_name}")
     else:
