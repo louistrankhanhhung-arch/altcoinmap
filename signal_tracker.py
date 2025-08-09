@@ -46,11 +46,11 @@ def resolve_duplicate_signal(new_signal):
             s["status"] = "canceled"
             msg = f"\ud83d\udeab <b>{pair}</b> tín hiệu ngược hướng mới, tự động huỷ."
             send_message(msg, reply_to_id=s.get("message_id"))
-            else:
+        else:
             # Cùng hướng -> đánh dấu là resignal, giữ lại
             new_signal["assessment"] = "Resignal - tín hiệu mở rộng"
-        updated_signals.append(s)
-        resolved = True
+            updated_signals.append(s)
+            resolved = True
 
     if resolved:
         save_active_signals(updated_signals)
