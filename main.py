@@ -68,8 +68,6 @@ def _estimate_eta_hours(entry, tp, atr_val, tf_hours=4):
         return successes / trials
     except Exception:
         return None
-
-
 def safe_float(val):
     try:
         if isinstance(val, str):
