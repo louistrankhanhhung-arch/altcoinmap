@@ -31,43 +31,6 @@ def _estimate_eta_hours(entry, tp, atr_val, tf_hours=4):
         pass
     return None
 
-    target_mul = abs(tp - entry) / atr_j
-    stop_mul   = abs(entry - sl) / atr_j
-
-            if str(direction).lower() == "long":
-                tp_level = close_j + target_mul * atr_j
-                sl_level = close_j - stop_mul * atr_j
-                for k in range(j+1, j+1+horizon):
-                    hi = raw_4h[k].get("high"); lo = raw_4h[k].get("low")
-                    if hi is None or lo is None: 
-                        continue
-                    if lo <= sl_level:
-                        trials += 1
-                        break
-                    if hi >= tp_level:
-                        successes += 1
-                        trials += 1
-                        break
-            else:
-                tp_level = close_j - target_mul * atr_j
-                sl_level = close_j + stop_mul * atr_j
-                for k in range(j+1, j+1+horizon):
-                    hi = raw_4h[k].get("high"); lo = raw_4h[k].get("low")
-                    if hi is None or lo is None: 
-                        continue
-                    if hi >= sl_level:
-                        trials += 1
-                        break
-                    if lo <= tp_level:
-                        successes += 1
-                        trials += 1
-                        break
-
-        if trials == 0:
-            return None
-        return successes / trials
-    except Exception:
-        return None
 def safe_float(val):
     try:
         if isinstance(val, str):
