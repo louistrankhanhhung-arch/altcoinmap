@@ -31,26 +31,6 @@ def _estimate_eta_hours(entry, tp, atr_val, tf_hours=4):
         pass
     return None
 
-def _prob_hit_tp_before_sl(raw_4h, entry, sl, tp, direction, lookback=180, horizon=48):
-    """
-    Ước lượng xác suất TP trước SL bằng mô phỏng đơn giản trên dữ liệu 4H.
-    Với mỗi mốc trong quá khứ, dùng close_j làm entry giả định và đặt TP/SL theo bội số ATR tương ứng.
-    Duyệt tối đa `horizon` nến; nếu chạm TP trước thì success, chạm SL trước thì fail.
-    """
-    try:
-        n = len(raw_4h)
-        if n < lookback + horizon + 5:
-            return None
-        successes = 0
-        trials = 0
-        start_idx = max(0, n - (lookback + horizon))
-        for j in range(start_idx, n - horizon - 1):
-            base = raw_4h[j]
-            close_j = base.get("close")
-            atr_j = base.get("atr")
-            if close_j is None or atr_j is None or atr_j <= 0:
-                continue
-
             target_mul = abs(tp - entry) / atr_j
             stop_mul   = abs(entry - sl) / atr_j
 
@@ -396,33 +376,24 @@ def run_block(block_name):
                 print(f"⚠️ Không có TP1 cho {sym} -> BỎ QUA")
                 continue
 
-            # === ETA & Probability (4H-based backtest-lite) ===
+                        # === ETA (4H-based back-of-the-envelope) ===
             try:
                 tp_list_vals = [v for v in (sig.get("tp") or []) if v is not None]
                 etas = []
-                probs = []
                 for tpv in tp_list_vals[:3]:
                     eta_h = _estimate_eta_hours(entry_1, tpv, atr_val, tf_hours=4)
                     etas.append(eta_h)
-                    p = _prob_hit_tp_before_sl(raw_4h or [], entry_1, stop_loss, tpv, direction, lookback=180, horizon=48)
-                    probs.append(p)
 
                 def _fmt(x, unit='h'):
                     return f"{x:.0f}{unit}" if isinstance(x, (int, float)) and x is not None else "—"
-                def _fmtp(p):
-                    return f"{p*100:.0f}%" if isinstance(p, (int, float)) and p is not None else "—"
 
                 print(f"🕒 ETA: TP1={_fmt(etas[0]) if len(etas)>0 else '—'}, TP2={_fmt(etas[1]) if len(etas)>1 else '—'}, TP3={_fmt(etas[2]) if len(etas)>2 else '—'}")
-                print(f"🎯 Prob(hit): TP1={_fmtp(probs[0]) if len(probs)>0 else '—'}, TP2={_fmtp(probs[1]) if len(probs)>1 else '—'}, TP3={_fmtp(probs[2]) if len(probs)>2 else '—'}")
 
                 if len(etas)>0: sig["eta_tp1_h"] = etas[0]
                 if len(etas)>1: sig["eta_tp2_h"] = etas[1]
                 if len(etas)>2: sig["eta_tp3_h"] = etas[2]
-                if len(probs)>0: sig["prob_tp1"] = probs[0]
-                if len(probs)>1: sig["prob_tp2"] = probs[1]
-                if len(probs)>2: sig["prob_tp3"] = probs[2]
             except Exception as _e:
-                print(f"⚠️ ETA/Prob calc error for {sym}: {_e}")
+                print(f"⚠️ ETA calc error for {sym}: {_e}")
 
             sig = resolve_duplicate_signal(sig)
             try:
