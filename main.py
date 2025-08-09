@@ -31,8 +31,8 @@ def _estimate_eta_hours(entry, tp, atr_val, tf_hours=4):
         pass
     return None
 
-            target_mul = abs(tp - entry) / atr_j
-            stop_mul   = abs(entry - sl) / atr_j
+    target_mul = abs(tp - entry) / atr_j
+    stop_mul   = abs(entry - sl) / atr_j
 
             if str(direction).lower() == "long":
                 tp_level = close_j + target_mul * atr_j
