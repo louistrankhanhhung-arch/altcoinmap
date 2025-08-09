@@ -21,13 +21,14 @@ LIMIT_MAP = {"1H": 60, "4H": 80, "1D": 100}
 
 TEST_MODE = True  # Set to False to enforce 4H candle closure
 
-def safe_float(val):
-    try:
-        if isinstance(val, str):
-            val = val.replace(',', '').replace('"', '').strip()
-        return float(val)
-    except:
-        return None
+# Short-bias guard (1D)
+try:
+    eligible, diag = check_short_bias(compute_indicators(raw_data["1D"]))
+    if not eligible:
+        print(f"[ELIGIBILITY] {symbol} filtered by short-bias guard: {diag}")
+        continue
+except Exception as _e:
+    print(f"[ELIGIBILITY] check failed for {symbol}: {_e}")
 
 def save_active_signals(signals):
     now = datetime.now(UTC).isoformat()
