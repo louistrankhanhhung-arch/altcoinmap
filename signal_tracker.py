@@ -93,8 +93,14 @@ def check_signals():
                 continue
 
             if now - sent_time > timedelta(hours=12):
-                if not (min(entry_1, entry_2) <= price <= max(entry_1, entry_2)):
+                in_range = False
+        if entry_2 is None:
+            in_range = (min(entry_1, entry_1) <= price <= max(entry_1, entry_1))
+        else:
+            in_range = (min(entry_1, entry_2) <= price <= max(entry_1, entry_2))
+        if not in_range:
                     signal["status"] = "timeout"
+            signal["timeout_notified"] = True
                     if message_id:
                         send_message(f"\u26a0\ufe0f <b>{pair}</b> \u0111\u00e3 timeout sau 12 gi\u1edd kh\u00f4ng v\u00e0o l\u1ec7nh.", reply_to_id=message_id)
                     else:
