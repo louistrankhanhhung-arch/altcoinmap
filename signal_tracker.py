@@ -92,21 +92,22 @@ def check_signals():
                 updated_signals.append(signal)
                 continue
 
-            if now - sent_time > timedelta(hours=12):
-        in_range = False
-        if entry_2 is None:
-            in_range = (min(entry_1, entry_1) <= price <= max(entry_1, entry_1))
-        else:
-            in_range = (min(entry_1, entry_2) <= price <= max(entry_1, entry_2))
-        if not in_range:
-                    signal["status"] = "timeout"
-            signal["timeout_notified"] = True
-                    if message_id:
-                        send_message(f"\u26a0\ufe0f <b>{pair}</b> \u0111\u00e3 timeout sau 12 gi\u1edd kh\u00f4ng v\u00e0o l\u1ec7nh.", reply_to_id=message_id)
-                    else:
-                        send_message(f"\u26a0\ufe0f <b>{pair}</b> \u0111\u00e3 timeout sau 12 gi\u1edd kh\u00f4ng v\u00e0o l\u1ec7nh.")
-                    updated_signals.append(signal)
-                    continue
+        if now - sent_time > timedelta(hours=12):
+            in_range = False
+            if entry_2 is None:
+                in_range = (min(entry_1, entry_1) <= price <= max(entry_1, entry_1))
+            else:
+                in_range = (min(entry_1, entry_2) <= price <= max(entry_1, entry_2))
+            if not in_range:
+                signal["status"] = "timeout"
+                signal["timeout_notified"] = True
+                if message_id:
+                    send_message(f"⚠️ <b>{pair}</b> đã timeout sau 12 giờ không vào lệnh.", reply_to_id=message_id)
+                else:
+                    send_message(f"⚠️ <b>{pair}</b> đã timeout sau 12 giờ không vào lệnh.")
+                updated_signals.append(signal)
+                continue
+
 
             if (direction == "long" and price <= sl) or (direction == "short" and price >= sl):
                 signal["status"] = "stopped"
