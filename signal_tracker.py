@@ -78,13 +78,8 @@ def check_signals():
                 updated_signals.append(signal)
                 continue
 
-            # Skip closed signals
+            # Chỉ xử lý lệnh còn mở
             if signal.get("status", "open") != "open":
-                updated_signals.append(signal)
-                continue
-
-            # Prevent repeated timeout notifications
-            if signal.get("timeout_notified"):
                 updated_signals.append(signal)
                 continue
 
@@ -94,40 +89,10 @@ def check_signals():
             entry_2 = signal.get("entry_2")
             sl = signal.get("stop_loss")
             tps = signal.get("tp") or []
-            sent_at = signal.get("sent_at")
-            try:
-                sent_time = datetime.fromisoformat(sent_at) if sent_at else None
-                if sent_time and sent_time.tzinfo is None:
-                    sent_time = sent_time.replace(tzinfo=timezone.utc)
-            except Exception:
-                sent_time = None
-            if not sent_time:
-                sent_time = now
-
             hit_tp = signal.get("hit_tp", [])
             message_id = signal.get("message_id")
 
-            # Timeout check (12 hours)
-            if now - sent_time > timedelta(hours=12):
-                if entry_1 is None:
-                    updated_signals.append(signal)
-                    continue
-                in_range = False
-                if entry_2 is None:
-                    in_range = (price == entry_1)
-                else:
-                    in_range = (min(entry_1, entry_2) <= price <= max(entry_1, entry_2))
-                if not in_range:
-                    signal["status"] = "timeout"
-                    signal["timeout_notified"] = True
-                    if message_id:
-                        send_message(f"⚠️ <b>{pair}</b> đã timeout sau 12 giờ không vào lệnh.", reply_to_id=message_id)
-                    else:
-                        send_message(f"⚠️ <b>{pair}</b> đã timeout sau 12 giờ không vào lệnh.")
-                    updated_signals.append(signal)
-                    continue
-
-            # Stop loss check
+            # Kiểm tra Stop Loss
             if sl is not None and ((direction == "long" and price <= sl) or (direction == "short" and price >= sl)):
                 signal["status"] = "stopped"
                 if message_id:
@@ -137,7 +102,7 @@ def check_signals():
                 updated_signals.append(signal)
                 continue
 
-            # Trend reversal check
+            # Kiểm tra đảo chiều xu hướng (4H)
             try:
                 raw_candles = fetch_coin_data(pair, interval="4hour")
                 enriched = compute_indicators(raw_candles)
@@ -150,7 +115,7 @@ def check_signals():
             except Exception as err:
                 print(f"⚠️ Không thể kiểm tra đảo chiều cho {pair}: {err}")
 
-            # Take profit check
+            # Kiểm tra Take Profit
             tp_hit = False
             for i, tp in enumerate(tps):
                 if i + 1 in hit_tp:
