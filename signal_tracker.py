@@ -93,7 +93,7 @@ def check_signals():
                 continue
 
             if now - sent_time > timedelta(hours=12):
-                in_range = False
+        in_range = False
         if entry_2 is None:
             in_range = (min(entry_1, entry_1) <= price <= max(entry_1, entry_1))
         else:
