@@ -8,7 +8,7 @@ from gpt_signal_builder import get_gpt_signals, BLOCKS
 from kucoin_api import fetch_coin_data
 from telegram_bot import send_message, format_message
 from signal_logger import save_signals
-from indicators import compute_indicators, generate_suggested_tps, compute_short_term_momentum, classify_trend
+from indicators import compute_indicators, generate_suggested_tps, compute_short_term_momentum
 from filters import anti_fomo_extension, rsi_regime, exhaustion_cooldown, sfp_check, multi_tf_alignment_ok, build_soft_htf_from_1h, debounce_1h_ok
 from signal_tracker import resolve_duplicate_signal
 from momentum_config import get_thresholds
@@ -68,6 +68,20 @@ def strong_momentum_flag(m, symbol):
     ])
 
 
+def classify_trend(candles):
+    if not candles or candles[-1].get("ma20") is None:
+        return "unknown"
+    price = candles[-1]["close"]
+    ma20 = candles[-1]["ma20"]
+    ma50 = candles[-1]["ma50"]
+    if ma20 and ma50:
+        if price > ma20 > ma50:
+            return "uptrend"
+        elif price < ma20 < ma50:
+            return "downtrend"
+        else:
+            return "sideways"
+    return "unknown"
 
 def detect_candle_signal(candles):
     if len(candles) < 2:
