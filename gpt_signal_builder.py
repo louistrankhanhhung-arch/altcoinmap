@@ -92,8 +92,8 @@ Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` ho�
                 response = await client.chat.completions.create(
                     model=GPT_MODEL,
                     messages=[{"role": "user", "content": prompt.strip()}],
-                    temperature=1,
-                    max_completion_tokens=1200,
+                    temperature=0.4,
+                    max_tokens=1200,
                     timeout=30
                 )
 
@@ -108,29 +108,7 @@ Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` ho�
                 parsed = parse_signal_response(cleaned)
 
                 if not parsed:
-                    print(f"⚠️ GPT trả về định dạng không hợp lệ cho {symbol}. Thử lại với prompt rút gọn...")
-                    try:
-                        strict_prompt = "{\"symbol\": \""+symbol+"\", \"direction\": \"Long or Short\", \"entry_1\": 0, \"entry_2\": null, \"stop_loss\": 0, \"tp\": [0,0,0], \"risk_level\": \"\", \"leverage\": \"\", \"confidence\": \"\", \"strategy_type\": \"\", \"key_watch\": \"\", \"nhan_dinh\": \"\"} — Fill this JSON with numbers and valid strings only. Return JSON only."
-                        response2 = await client.chat.completions.create(
-                            model=GPT_MODEL,
-                            messages=[
-                                {"role":"system","content":"Return ONLY valid JSON. No prose."},
-                                {"role":"user","content": strict_prompt}
-                            ],
-                            response_format={"type":"json_object"},
-                            temperature=1,
-                            max_completion_tokens=800,
-                            timeout=25
-                        )
-                        reply2 = response2.choices[0].message.content.strip()
-                        js2_start = reply2.find("{"); js2_end = reply2.rfind("}")+1
-                        cleaned2 = reply2[js2_start:js2_end].strip()
-                        parsed = parse_signal_response(cleaned2)
-                    except Exception as _re:
-                        print(f"⚠️ Retry fail for {symbol}: {_re}")
-
-                if not parsed:
-                    print(f"⚠️ GPT trả về định dạng không hợp lệ cho {symbol} sau khi retry.")
+                    print(f"⚠️ GPT trả về định dạng không hợp lệ cho {symbol}.")
                     continue
 
                 parsed["pair"] = symbol
