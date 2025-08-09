@@ -144,3 +144,99 @@ def check_signals():
 
 if __name__ == "__main__":
     check_signals()
+
+
+PNL_LOG_FILE = "pnl_log.jsonl"
+REPORT_STATE = "daily_report_state.json"
+
+def _read_pnl_events(hours=24):
+    events = []
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+        if not os.path.exists(PNL_LOG_FILE):
+            return events
+        with open(PNL_LOG_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    ev = json.loads(line)
+                    ts = ev.get("ts")
+                    dt = datetime.fromisoformat(ts) if ts else None
+                    if dt and dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    if not dt or dt < cutoff:
+                        continue
+                    events.append(ev)
+                except Exception:
+                    continue
+    except Exception as e:
+        print(f"⚠️ Không đọc được PnL log: {e}")
+    return events
+
+def _aggregate_pnl(events):
+    # tổng % có trọng số theo portion đóng
+    total = 0.0
+    wins = 0
+    losses = 0
+    count = 0
+    by_pair = {}
+    for ev in events:
+        pct = ev.get("pct")
+        portion = ev.get("portion", 1.0)
+        pair = ev.get("pair", "N/A")
+        if pct is None:
+            continue
+        realized = pct * portion
+        total += realized
+        count += 1
+        if realized >= 0: wins += 1
+        else: losses += 1
+        by_pair.setdefault(pair, 0.0)
+        by_pair[pair] += realized
+    return {
+        "total_pct": round(total, 2),
+        "wins": wins, "losses": losses, "events": count,
+        "by_pair": {k: round(v, 2) for k, v in sorted(by_pair.items(), key=lambda x: -abs(x[1]))[:10]}
+    }
+
+def send_daily_report_if_due():
+    now = datetime.now(timezone.utc)
+    # Chỉ gửi từ 12:00 đến 12:05 UTC; tránh gửi lặp
+    if not (now.hour == 12 and now.minute <= 5):
+        return
+    last = None
+    try:
+        if os.path.exists(REPORT_STATE):
+            with open(REPORT_STATE, "r", encoding="utf-8") as f:
+                st = json.load(f)
+                last = st.get("last_date")
+    except Exception:
+        pass
+    today = now.date().isoformat()
+    if last == today:
+        return  # đã gửi hôm nay
+
+    evs = _read_pnl_events(hours=24)
+    agg = _aggregate_pnl(evs)
+    if evs:
+        lines = [f"📊 <b>BÁO CÁO PnL 24H</b> (tính đến {now.strftime('%Y-%m-%d %H:%M UTC')})",
+                 f"• Tổng P/L (tỷ lệ): <b>{agg['total_pct']}%</b>",
+                 f"• Số sự kiện chốt: {agg['events']} (win {agg['wins']} / loss {agg['losses']})"]
+        if agg["by_pair"]:
+            tops = "\n".join([f"  - {k}: {v}%" for k,v in agg["by_pair"].items()])
+            lines.append("• Top đóng góp:
+" + tops)
+        msg = "\n".join(lines)
+    else:
+        msg = f"📊 <b>BÁO CÁO PnL 24H</b>: Không có sự kiện chốt trong 24h qua."
+
+    send_message(msg)
+
+    try:
+        with open(REPORT_STATE, "w", encoding="utf-8") as f:
+            json.dump({"last_date": today}, f)
+    except Exception:
+        pass
+
