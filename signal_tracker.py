@@ -88,8 +88,10 @@ def check_signals():
                     signal["status"] = "timeout"
                     if message_id:
                         send_message(f"\u26a0\ufe0f <b>{pair}</b> \u0111\u00e3 timeout sau 12 gi\u1edd kh\u00f4ng v\u00e0o l\u1ec7nh.", reply_to_id=message_id)
+            signal['timeout_sent'] = True
                     else:
                         send_message(f"\u26a0\ufe0f <b>{pair}</b> \u0111\u00e3 timeout sau 12 gi\u1edd kh\u00f4ng v\u00e0o l\u1ec7nh.")
+            signal['timeout_sent'] = True
                     updated_signals.append(signal)
                     continue
 
