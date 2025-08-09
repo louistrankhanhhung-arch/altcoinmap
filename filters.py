@@ -1,31 +1,25 @@
 # filters.py
 # Bộ tiêu chí hạn chế bull/bear trap & quá mua/quá bán sâu.
 from typing import Dict, Tuple, List
-
-
 # === Runtime filters configuration (centralized here to avoid circular imports) ===
 FILTERS_CONFIG = {
-    # Soft confirmations for hourly scanning
+# Soft confirmations for hourly scanning
     "use_soft_4h": True,
     "debounce_1h_bars": 2,
-
-    # Multi‑TF alignment (1H vs 4H)
+# Multi‑TF alignment (1H vs 4H)
     "multi_tf_confirm": True,
     "tf_confirm_main": "4H",
     "tf_confirm_threshold": 0.2,
-
-    # Core anti-trap filters
+# Core anti-trap filters
     "enable_rsi_regime": True,
     "enable_anti_fomo": True,
     "enable_exhaustion_cooldown": True,
     "enable_sfp": True,
-
-    # Breakout retest behavior
+# Breakout retest behavior
     "enable_breakout_retest": "auto",  # "auto" | "on" | "off"
     "slope_strong_threshold": 0.5,     # in AUTO mode, if |slope| > this, skip retest
     "retest_max_candles": 3,
-
-    # Thresholds
+# Thresholds
     "anti_fomo_dist_atr": 1.5,
     "rsi_overheat": 75,
     "rsi_distance_atr": 1.2,
@@ -88,8 +82,7 @@ def breakout_retest_ok(candles_tf: list, breakout_zone: tuple, cfg: dict) -> tup
     mode = cfg.get("enable_breakout_retest", "auto")
     if mode == "off":
         return True, "skip"
-
-    # Tính slope MA20 1D nếu có dữ liệu
+# Tính slope MA20 1D nếu có dữ liệu
     slope_threshold = cfg.get("slope_strong_threshold", 0.5)
     slope_val = None
     try:
@@ -111,7 +104,7 @@ def breakout_retest_ok(candles_tf: list, breakout_zone: tuple, cfg: dict) -> tup
     for c in candles_tf[-N:]:
         if c.get("low") is None or c.get("high") is None or c.get("close") is None or c.get("open") is None:
             continue
-        # Retest định nghĩa: low chạm vùng breakout + close > open (bull) hoặc high chạm vùng breakout + close < open (bear)
+# Retest định nghĩa: low chạm vùng breakout + close > open (bull) hoặc high chạm vùng breakout + close < open (bear)
         if c["low"] <= hi and c["low"] >= lo and c["close"] > c["open"]:
             return True, "bull_retest"
         if c["high"] >= lo and c["high"] <= hi and c["close"] < c["open"]:
@@ -136,8 +129,7 @@ def multi_tf_alignment_ok(candles_fast: list, candles_slow: list, cfg: dict) -> 
             if len(ma20_vals) >= 2:
                 return (ma20_vals[-1] - ma20_vals[-2]) / ma20_vals[-2]
         return 0
-
-        # Cho phép dùng 4H mềm nếu bật cấu hình hoặc không có 4H thật
+# Cho phép dùng 4H mềm nếu bật cấu hình hoặc không có 4H thật
     if cfg.get("use_soft_4h", True) and (not candles_slow or len(candles_slow) < 5):
         proxy = build_soft_htf_from_1h(candles_fast, group=4)
         candles_slow = proxy if proxy else candles_slow
@@ -158,7 +150,7 @@ def build_soft_htf_from_1h(candles_1h: list, group: int = 4, limit: int = 60) ->
     if not candles_1h or len(candles_1h) < group:
         return []
     soft = []
-    # dùng các field: open, high, low, close
+# dùng các field: open, high, low, close
     n = len(candles_1h)
     start = max(0, n - limit*group)
     for i in range(start, n, group):
@@ -181,7 +173,7 @@ def debounce_1h_ok(candles_1h: list, bars: int = 2) -> tuple:
     closes = [c.get("close") for c in candles_1h if c.get("close") is not None]
     if len(closes) < max(21, bars+1):
         return True, "insufficient"
-    # slope gần đúng: so sánh MA20 gần nhất với trước đó
+# slope gần đúng: so sánh MA20 gần nhất với trước đó
     ma20_vals = [sum(closes[i:i+20])/20 for i in range(len(closes)-19)]
     if len(ma20_vals) < bars+1:
         return True, "insufficient"
