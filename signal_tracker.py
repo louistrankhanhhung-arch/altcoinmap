@@ -226,8 +226,7 @@ def send_daily_report_if_due():
                  f"• Số sự kiện chốt: {agg['events']} (win {agg['wins']} / loss {agg['losses']})"]
         if agg["by_pair"]:
             tops = "\n".join([f"  - {k}: {v}%" for k,v in agg["by_pair"].items()])
-            lines.append("• Top đóng góp:
-" + tops)
+            lines.append("• Top đóng góp:\n" + tops)
         msg = "\n".join(lines)
     else:
         msg = f"📊 <b>BÁO CÁO PnL 24H</b>: Không có sự kiện chốt trong 24h qua."
