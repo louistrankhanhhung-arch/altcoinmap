@@ -9,8 +9,10 @@ from kucoin_api import fetch_coin_data
 from telegram_bot import send_message, format_message
 from signal_logger import save_signals
 from indicators import compute_indicators, generate_suggested_tps, compute_short_term_momentum
+from filters import anti_fomo_extension, rsi_regime, exhaustion_cooldown, sfp_check, multi_tf_alignment_ok, build_soft_htf_from_1h, debounce_1h_ok
 from signal_tracker import resolve_duplicate_signal
 from momentum_config import get_thresholds
+from trade_policy import FILTERS_CONFIG
 
 
 ACTIVE_FILE = "active_signals.json"
@@ -120,8 +122,10 @@ def run_block(block_name):
             }
             raw_data_by_symbol[symbol] = raw_data
             enriched = {}
+            candles_map = {}
             for tf in raw_data:
                 candles = compute_indicators(raw_data[tf])
+                candles_map[tf] = candles
                 trend = classify_trend(candles)
                 signal = detect_candle_signal(candles)
                 enriched[tf] = {
@@ -143,6 +147,60 @@ def run_block(block_name):
                         })
                 except Exception as _e:
                     print(f"⚠️ Không tính được momentum 1H cho {symbol}: {_e}")
+
+
+            # === Soft confirmations & filters for hourly scan ===
+            try:
+                cfg = FILTERS_CONFIG
+
+                # 0) Debounce 1H: yêu cầu nến 1H gần nhất đồng thuận slope
+                ok, why = debounce_1h_ok(candles_map.get("1H", []), bars=cfg.get("debounce_1h_bars", 2))
+                if not ok:
+                    print(f"⛔ {symbol}: debounce_1h -> {why}")
+                    continue
+
+                # 1) Multi-TF alignment (1H vs 4H-soft)
+                candles_fast = candles_map.get("1H", [])
+                candles_slow = candles_map.get("4H", [])
+                ok, why = multi_tf_alignment_ok(candles_fast, candles_slow, cfg)
+                if not ok:
+                    print(f"⛔ {symbol}: multi_tf_alignment -> {why}")
+                    continue
+
+                # 2) RSI regime (dựa snapshot 4H, nếu thiếu spike lấy từ 1H)
+                snap_4h = dict(enriched.get("4H", {}))
+                spikes_1h = {k: enriched.get("1H", {}).get(k) for k in ("atr_spike_ratio","volume_spike_ratio","bb_width_ratio","pct_change_1h")}
+                for k, v in spikes_1h.items():
+                    snap_4h.setdefault(k, v)
+                trend_1d = enriched.get("1D", {}).get("trend", "unknown")
+                ok, why = rsi_regime(snap_4h, trend_1d, cfg)
+                if not ok:
+                    print(f"⛔ {symbol}: rsi_regime -> {why}")
+                    continue
+
+                # 3) Anti-FOMO extension
+                ok, why = anti_fomo_extension(snap_4h, cfg)
+                if not ok:
+                    print(f"⛔ {symbol}: anti_fomo -> {why}")
+                    continue
+
+                # 4) Exhaustion cooldown
+                ok, why = exhaustion_cooldown(snap_4h, cfg)
+                if not ok:
+                    print(f"⛔ {symbol}: exhaustion -> {why}")
+                    continue
+
+                # 5) SFP check (dùng 4H thật nếu có, nếu không soft-4H)
+                candles4h_for_sfp = candles_map.get("4H")
+                if not candles4h_for_sfp:
+                    candles4h_for_sfp = build_soft_htf_from_1h(candles_map.get("1H", []), group=4)
+                ok, why = sfp_check(candles4h_for_sfp or [], cfg)
+                if not ok:
+                    print(f"⛔ {symbol}: sfp -> {why}")
+                    continue
+
+            except Exception as _e:
+                print(f"⚠️ Filters error on {symbol}: {_e}")
 
             # Siết đồng thuận khung giờ
             t1h = enriched.get("1H", {}).get("trend", "unknown")
