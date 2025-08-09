@@ -60,8 +60,57 @@ def atr(candles, period=14):
         atr_vals.append(new_atr)
     return [None] + atr_vals
 
-def detect_support_resistance(candles, window=20, tolerance=0.005):
-    prices = [c["close"] for c in candles]
+def detect_support_resistance(candles, window=20, tol_atr_mul=0.6):
+    """
+    Pivot HH/LL dựa trên high/low, gom cụm theo ngưỡng tol ~ ATR.
+    Trả về [(idx, price, 'support'|'resistance')].
+    """
+    if not candles or len(candles) < window * 2 + 3:
+        return []
+
+    highs = [c["high"] for c in candles]
+    lows  = [c["low"]  for c in candles]
+    atrs  = [c.get("atr") for c in candles]
+    atr_ref = None
+    hist_atr = [x for x in atrs[-(window*2+50):] if x is not None]
+    if hist_atr:
+        atr_ref = sum(hist_atr) / len(hist_atr)
+
+    levels = []
+    n = len(candles)
+    for i in range(window, n - window):
+        h = highs[i]; l = lows[i]
+        left_h  = max(highs[i-window:i]) if i-window>=0 else None
+        right_h = max(highs[i+1:i+1+window]) if i+1+window<=n else None
+        left_l  = min(lows[i-window:i]) if i-window>=0 else None
+        right_l = min(lows[i+1:i+1+window]) if i+1+window<=n else None
+
+        # pivot high / pivot low
+        if left_h is not None and right_h is not None and h >= left_h and h >= right_h:
+            levels.append((i, h, 'resistance'))
+        if left_l is not None and right_l is not None and l <= left_l and l <= right_l:
+            levels.append((i, l, 'support'))
+
+    # gom cụm theo tolerance dựa trên ATR (fallback 0.5% nếu thiếu ATR)
+    filtered = []
+    def too_close(p, q):
+        if atr_ref and atr_ref > 0:
+            return abs(p - q) < tol_atr_mul * atr_ref
+        # fallback %
+        return abs(p - q) / ((p+q)/2.0) < 0.005
+
+    for idx, price, typ in sorted(levels, key=lambda x: x[1]):
+        merged = False
+        for j, (ii, pp, tt) in enumerate(filtered):
+            if tt == typ and too_close(price, pp):
+                # giữ mức “mạnh” hơn bằng cách chọn xa giá hiện tại hơn
+                filtered[j] = (idx, (pp + price)/2.0, typ)
+                merged = True
+                break
+        if not merged:
+            filtered.append((idx, price, typ))
+
+    return filtered
     levels = []
     for i in range(window, len(prices) - window):
         curr_price = prices[i]
@@ -116,8 +165,60 @@ def classify_trend(candles):
             return "sideways"
     return "unknown"
 
-def generate_suggested_tps(entry_1, direction, sr_levels):
-    supports = [lvl for _, lvl, typ in sr_levels if typ == 'support']
+def generate_suggested_tps(entry_1, direction, sr_levels, atr_val=None,
+                           min_atr_mul=0.8, min_step_atr=0.5, max_levels=5):
+    """
+    Lọc SR quá gần bằng ATR, đảm bảo khoảng cách tối thiểu giữa các TP.
+    Nếu thiếu, sinh TP tổng hợp theo bội số ATR.
+    """
+    if atr_val is None or atr_val <= 0:
+        atr_val = None  # cho fallback theo % nếu cần
+
+    supports    = [lvl for _, lvl, typ in sr_levels if typ == 'support']
+    resistances = [lvl for _, lvl, typ in sr_levels if typ == 'resistance']
+
+    raw_levels = []
+    if direction == "long":
+        raw_levels = sorted([lvl for lvl in resistances if lvl > entry_1])
+    else:
+        raw_levels = sorted([lvl for lvl in supports if lvl < entry_1], reverse=True)
+
+    def far_enough(a, b):
+        if atr_val:
+            return abs(a - b) >= min_step_atr * atr_val
+        return abs(a - b) / ((a+b)/2.0) >= 0.004  # fallback ~0.4%
+
+    # lọc mức quá gần entry
+    levels = []
+    for lvl in raw_levels:
+        if atr_val:
+            if abs(lvl - entry_1) < min_atr_mul * atr_val:
+                continue
+        else:
+            if abs(lvl - entry_1) / entry_1 < 0.006:  # ~0.6% nếu thiếu ATR
+                continue
+        if not levels or far_enough(lvl, levels[-1]):
+            levels.append(lvl)
+        if len(levels) >= max_levels:
+            break
+
+    # nếu thiếu thì sinh TP tổng hợp theo ATR
+    if len(levels) < max_levels:
+        if atr_val:
+            muls = [1.0, 1.5, 2.0, 3.0, 4.0]
+            synth = []
+            for m in muls:
+                tp = entry_1 + (m * atr_val if direction == "long" else -m * atr_val)
+                # bỏ TP quá gần entry
+                if abs(tp - entry_1) < min_atr_mul * (atr_val or 1):
+                    continue
+                if not levels or far_enough(tp, (levels + synth)[-1]):
+                    synth.append(tp)
+                if len(levels) + len(synth) >= max_levels:
+                    break
+            levels += synth
+
+    return [round(x, 4) for x in levels[:max_levels]]
     resistances = [lvl for _, lvl, typ in sr_levels if typ == 'resistance']
     if direction == "long":
         levels = sorted([lvl for lvl in resistances if lvl > entry_1])
