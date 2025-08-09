@@ -3,6 +3,7 @@ import openai
 from datetime import datetime, UTC
 import json
 from utils import parse_signal_response
+from trade_policy import GPT_MODEL
 
 # Gửi từng coin một với prompt có định dạng từ PROMPT_TEMPLATE
 async def get_gpt_signals(data_by_symbol, suggested_tps_by_symbol, test_mode=False):
@@ -43,6 +44,7 @@ async def get_gpt_signals(data_by_symbol, suggested_tps_by_symbol, test_mode=Fal
                 json_tps = json.dumps(suggested_tps, ensure_ascii=False)
 
                 prompt = f"""
+- Decide dynamically whether Entry 2 is needed based on market structure, volatility, and strategy type. If not needed, set Entry 2 as None.
 Bạn là một trợ lý giao dịch crypto chuyên nghiệp.
 Dưới đây là dữ liệu kỹ thuật của {symbol} theo từng khung thời gian:
 
@@ -88,7 +90,7 @@ Chỉ TRẢ VỀ nội dung JSON THUẦN TÚY, KHÔNG bao gồm ```json, ``` ho�
                 print(f"\n🤖 GPT analyzing {symbol} at {now.isoformat()}...")
 
                 response = await client.chat.completions.create(
-                    model="gpt-4o",
+                    model=GPT_MODEL,
                     messages=[{"role": "user", "content": prompt.strip()}],
                     temperature=0.4,
                     max_tokens=1200,
@@ -133,4 +135,3 @@ BLOCKS = {
         "TIA/USDT", "ENS/USDT", "ADA/USDT", "TRX/USDT", "RPL/USDT",
     ],
 }
-
