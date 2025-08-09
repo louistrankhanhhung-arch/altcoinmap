@@ -44,4 +44,4 @@ def cooldown_ok(last_signal_ts: Optional[float], now_ts: Optional[float] = None,
 
 
 # GPT model selection
-GPT_MODEL = 'gpt-5'
+GPT_MODEL = 'gpt-4o'
