@@ -12,7 +12,7 @@ from indicators import compute_indicators, generate_suggested_tps, compute_short
 from filters import anti_fomo_extension, rsi_regime, exhaustion_cooldown, sfp_check, multi_tf_alignment_ok, build_soft_htf_from_1h, debounce_1h_ok
 from signal_tracker import resolve_duplicate_signal
 from momentum_config import get_thresholds
-from trade_policy import FILTERS_CONFIG
+from filters import FILTERS_CONFIG
 
 
 ACTIVE_FILE = "active_signals.json"
