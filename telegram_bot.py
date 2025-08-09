@@ -71,7 +71,7 @@ decimal_map = {
     # MAJORS
     "BTC": 2, "ETH": 2, "BNB": 2, "SOL": 2, "ADA": 4, "TRX": 5,
     # LARGE CAP ALTS
-    "LINK": 2, "AVAX": 2, "NEAR": 3, "INJ": 2, "ATOM": 2, "AAVE": 2, "UNI": 2, "FIL": 2, "RNDR": 2,
+    "LINK": 2, "AVAX": 2, "NEAR": 3, "INJ": 2, "ATOM": 2, "AAVE": 2, "UNI": 2, "FIL": 2,
     # MID CAP ALTS
     "ARB": 4, "SUI": 4, "PENDLE": 3, "APT": 3, "OP": 3, "STRK": 3, "DYDX": 3, "GMX": 2, "TIA": 3, "ENS": 2, "FET": 3, "RPL": 3,
 }
