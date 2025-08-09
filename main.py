@@ -11,13 +11,12 @@ from telegram_bot import send_message, format_message
 from signal_logger import save_signals
 from indicators import compute_indicators, generate_suggested_tps, compute_short_term_momentum, compute_slopes
 from signal_tracker import resolve_duplicate_signal
-from momentum_config import get_thresholds, thresholds_for, allowed_policies_for
+from momentum_config import allowed_policies_for, get_thresholds, thresholds_for
 
 
 ACTIVE_FILE = "active_signals.json"
 
 TF_MAP = {"1H": "1hour", "4H": "4hour", "1D": "1day"}
-
 LIMIT_MAP = {"1H": 60, "4H": 80, "1D": 100}
 
 TEST_MODE = True  # Set to False to enforce 4H candle closure
@@ -131,9 +130,8 @@ def run_block(block_name):
                 enriched[tf] = {
                     "trend": trend,
                     "candle_signal": signal,
-                    **candles[-1]
+                    **candles[-1], **slopes
                 }
-
 # Short-bias guard (1D)
 try:
     eligible, diag = check_short_bias(compute_indicators(raw_data["1D"]))
