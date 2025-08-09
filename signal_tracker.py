@@ -73,63 +73,84 @@ def check_signals():
 
     for signal in active_signals:
         try:
-            pair = signal["pair"]
-            symbol = pair.replace("/", "-")
+            pair = signal.get("pair")
+            if not pair:
+                updated_signals.append(signal)
+                continue
+
+            # Skip closed signals
+            if signal.get("status", "open") != "open":
+                updated_signals.append(signal)
+                continue
+
+            # Prevent repeated timeout notifications
+            if signal.get("timeout_notified"):
+                updated_signals.append(signal)
+                continue
+
             price = fetch_realtime_price(pair)
-            direction = signal["direction"].lower()
-            entry_1 = signal["entry_1"]
-            entry_2 = signal["entry_2"]
-            sl = signal["stop_loss"]
-            tps = signal["tp"]
-            sent_time = datetime.fromisoformat(signal["sent_at"]) or datetime.now(timezone.utc)
-            if sent_time.tzinfo is None:
-                sent_time = sent_time.replace(tzinfo=timezone.utc)
-            status = signal.get("status", "open")
+            direction = (signal.get("direction") or "").lower()
+            entry_1 = signal.get("entry_1")
+            entry_2 = signal.get("entry_2")
+            sl = signal.get("stop_loss")
+            tps = signal.get("tp") or []
+            sent_at = signal.get("sent_at")
+            try:
+                sent_time = datetime.fromisoformat(sent_at) if sent_at else None
+                if sent_time and sent_time.tzinfo is None:
+                    sent_time = sent_time.replace(tzinfo=timezone.utc)
+            except Exception:
+                sent_time = None
+            if not sent_time:
+                sent_time = now
+
             hit_tp = signal.get("hit_tp", [])
             message_id = signal.get("message_id")
 
-            if status != "open":
-                updated_signals.append(signal)
-                continue
-
-        if now - sent_time > timedelta(hours=12):
-            in_range = False
-            if entry_2 is None:
-                in_range = (min(entry_1, entry_1) <= price <= max(entry_1, entry_1))
-            else:
-                in_range = (min(entry_1, entry_2) <= price <= max(entry_1, entry_2))
-            if not in_range:
-                signal["status"] = "timeout"
-                signal["timeout_notified"] = True
-                if message_id:
-                    send_message(f"⚠️ <b>{pair}</b> đã timeout sau 12 giờ không vào lệnh.", reply_to_id=message_id)
+            # Timeout check (12 hours)
+            if now - sent_time > timedelta(hours=12):
+                if entry_1 is None:
+                    updated_signals.append(signal)
+                    continue
+                in_range = False
+                if entry_2 is None:
+                    in_range = (price == entry_1)
                 else:
-                    send_message(f"⚠️ <b>{pair}</b> đã timeout sau 12 giờ không vào lệnh.")
-                updated_signals.append(signal)
-                continue
+                    in_range = (min(entry_1, entry_2) <= price <= max(entry_1, entry_2))
+                if not in_range:
+                    signal["status"] = "timeout"
+                    signal["timeout_notified"] = True
+                    if message_id:
+                        send_message(f"⚠️ <b>{pair}</b> đã timeout sau 12 giờ không vào lệnh.", reply_to_id=message_id)
+                    else:
+                        send_message(f"⚠️ <b>{pair}</b> đã timeout sau 12 giờ không vào lệnh.")
+                    updated_signals.append(signal)
+                    continue
 
-
-            if (direction == "long" and price <= sl) or (direction == "short" and price >= sl):
+            # Stop loss check
+            if sl is not None and ((direction == "long" and price <= sl) or (direction == "short" and price >= sl)):
                 signal["status"] = "stopped"
                 if message_id:
-                    send_message(f"\ud83d\udea9 <b>{pair}</b> \u0111\u00e3 hit Stop Loss \u1edf {price:,.2f}", reply_to_id=message_id)
+                    send_message(f"🚩 <b>{pair}</b> đã hit Stop Loss ở {price:,.2f}", reply_to_id=message_id)
                 else:
-                    send_message(f"\ud83d\udea9 <b>{pair}</b> \u0111\u00e3 hit Stop Loss \u1edf {price:,.2f}")
+                    send_message(f"🚩 <b>{pair}</b> đã hit Stop Loss ở {price:,.2f}")
                 updated_signals.append(signal)
                 continue
 
+            # Trend reversal check
             try:
                 raw_candles = fetch_coin_data(pair, interval="4hour")
                 enriched = compute_indicators(raw_candles)
                 new_trend = classify_trend(enriched)
                 if (direction == "long" and new_trend == "downtrend") or (direction == "short" and new_trend == "uptrend"):
                     signal["status"] = "reversed"
-                    send_message(f"\u21a9\ufe0f <b>{pair}</b> \u0111\u00e3 \u0111\u1ea3o chi\u1ec1u xu h\u01b0\u1edbng. L\u1ec7nh {direction.title()} b\u1ecb hu\u1ef7.", reply_to_id=message_id)
+                    send_message(f"↩️ <b>{pair}</b> đã đảo chiều xu hướng. Lệnh {direction.title()} bị huỷ.", reply_to_id=message_id)
                     updated_signals.append(signal)
                     continue
             except Exception as err:
-                print(f"\u26a0\ufe0f Kh\u00f4ng th\u1ec3 ki\u1ec3m tra \u0111\u1ea3o chi\u1ec1u cho {pair}: {err}")
+                print(f"⚠️ Không thể kiểm tra đảo chiều cho {pair}: {err}")
 
+            # Take profit check
             tp_hit = False
             for i, tp in enumerate(tps):
                 if i + 1 in hit_tp:
@@ -137,9 +158,9 @@ def check_signals():
                 if (direction == "long" and price >= tp) or (direction == "short" and price <= tp):
                     hit_tp.append(i + 1)
                     if message_id:
-                        send_message(f"\u2705 <b>{pair}</b> \u0111\u00e3 \u0111\u1ea1t TP{i + 1} \u1edf {price:,.2f}", reply_to_id=message_id)
+                        send_message(f"✅ <b>{pair}</b> đã đạt TP{i + 1} ở {price:,.2f}", reply_to_id=message_id)
                     else:
-                        send_message(f"\u2705 <b>{pair}</b> \u0111\u00e3 \u0111\u1ea1t TP{i + 1} \u1edf {price:,.2f}")
+                        send_message(f"✅ <b>{pair}</b> đã đạt TP{i + 1} ở {price:,.2f}")
                     tp_hit = True
 
             if tp_hit:
@@ -147,14 +168,14 @@ def check_signals():
                 if len(hit_tp) == len(tps):
                     signal["status"] = "closed"
                     if message_id:
-                        send_message(f"\ud83c\udfaf <b>{pair}</b> \u0111\u00e3 ho\u00e0n th\u00e0nh t\u1ea5t c\u1ea3 m\u1ee5c ti\u00eau v\u00e0 \u0111\u00f3ng l\u1ec7nh.", reply_to_id=message_id)
+                        send_message(f"🎯 <b>{pair}</b> đã hoàn thành tất cả mục tiêu và đóng lệnh.", reply_to_id=message_id)
                     else:
-                        send_message(f"\ud83c\udfaf <b>{pair}</b> \u0111\u00e3 ho\u00e0n th\u00e0nh t\u1ea5t c\u1ea3 m\u1ee5c ti\u00eau v\u00e0 \u0111\u00f3ng l\u1ec7nh.")
+                        send_message(f"🎯 <b>{pair}</b> đã hoàn thành tất cả mục tiêu và đóng lệnh.")
 
             updated_signals.append(signal)
 
         except Exception as e:
-            print(f"\u274c L\u1ed7i khi x\u1eed l\u00fd t\u00edn hi\u1ec7u {signal.get('pair')}: {e}")
+            print(f"❌ Lỗi khi xử lý tín hiệu {signal.get('pair')}: {e}")
             updated_signals.append(signal)
 
     save_active_signals(updated_signals)
