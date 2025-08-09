@@ -41,3 +41,7 @@ def cooldown_ok(last_signal_ts: Optional[float], now_ts: Optional[float] = None,
     if now_ts is None:
         now_ts = datetime.now(timezone.utc).timestamp()
     return (now_ts - last_signal_ts) >= hours * 3600.0
+
+
+# GPT model selection
+GPT_MODEL = 'gpt-5'
