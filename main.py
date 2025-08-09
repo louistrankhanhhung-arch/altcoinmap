@@ -1,3 +1,4 @@
+from filters import FILTERS_CONFIG, anti_fomo_extension, build_soft_htf_from_1h, debounce_1h_ok, exhaustion_cooldown, multi_tf_alignment_ok, rsi_regime, sfp_check
 import sys
 import json
 import traceback
@@ -9,10 +10,8 @@ from kucoin_api import fetch_coin_data
 from telegram_bot import send_message, format_message
 from signal_logger import save_signals
 from indicators import compute_indicators, generate_suggested_tps, compute_short_term_momentum
-from filters import anti_fomo_extension, rsi_regime, exhaustion_cooldown, sfp_check, multi_tf_alignment_ok, build_soft_htf_from_1h, debounce_1h_ok
 from signal_tracker import resolve_duplicate_signal
 from momentum_config import get_thresholds
-from filters import FILTERS_CONFIG
 
 
 ACTIVE_FILE = "active_signals.json"
