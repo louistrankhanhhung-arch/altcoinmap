@@ -85,3 +85,31 @@ def breakout_retest_ok(candles_tf: list, breakout_zone: tuple, cfg: dict) -> tup
         if c["high"] >= lo and c["high"] <= hi and c["close"] < c["open"]:
             return True, "bear_retest"
     return False, "no_retest"
+
+def multi_tf_alignment_ok(candles_fast: list, candles_slow: list, cfg: dict) -> tuple:
+    """
+    Kiểm tra momentum của TF nhanh (vd: 1H) có cùng hướng TF chậm (vd: 4H) hay không.
+    candles_fast: danh sách nến TF nhanh
+    candles_slow: danh sách nến TF chậm
+    cfg: FILTERS_CONFIG
+    """
+    if not cfg.get("multi_tf_confirm", False):
+        return True, "skip"
+    threshold = cfg.get("tf_confirm_threshold", 0.2)
+
+    def slope_ma20(candles):
+        closes = [c.get("close") for c in candles if c.get("close") is not None]
+        if len(closes) >= 21:
+            ma20_vals = [sum(closes[i:i+20])/20 for i in range(len(closes)-19)]
+            if len(ma20_vals) >= 2:
+                return (ma20_vals[-1] - ma20_vals[-2]) / ma20_vals[-2]
+        return 0
+
+    slope_fast = slope_ma20(candles_fast)
+    slope_slow = slope_ma20(candles_slow)
+
+    if slope_fast * slope_slow < 0:  # trái hướng
+        return False, f"opposite slopes {slope_fast:.3f} vs {slope_slow:.3f}"
+    if abs(slope_slow) < threshold:  # trend chậm chưa đủ mạnh
+        return False, f"weak slow slope {slope_slow:.3f}"
+    return True, f"aligned slopes {slope_fast:.3f} vs {slope_slow:.3f}"
